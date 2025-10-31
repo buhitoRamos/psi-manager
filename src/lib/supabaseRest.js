@@ -53,6 +53,7 @@ async function fetchDelete(path) {
 
 // Examples for table `users` (columns: id, user, pass)
 export async function selectUsersByUser(username) {
+  console.debug('userName:', username);
   // GET /rest/v1/users?select=id,user,pass&user=eq.<username>
   // Use the eq.'value' form and percent-encode the username. This avoids issues with
   // characters that would otherwise be interpreted by the URL parser.
@@ -123,6 +124,7 @@ export async function authCheck(username, password) {
   // Try secure RPC (uses pgcrypto/crypt) first, then fall back to legacy auth_check
   try {
     const res = await callRpc('auth_check_secure', { u: username, p: password });
+   console.warn('res;',res);
     if (Array.isArray(res) && res.length > 0) {
       if (DEV_AUTH_BYPASS) {
         // force valid for dev bypass
@@ -132,8 +134,7 @@ export async function authCheck(username, password) {
       return res[0];
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.debug('[supabaseRest] auth_check_secure failed, falling back to auth_check:', err);
+    console.warn('[supabaseRest] auth_check_secure failed, falling back to auth_check:', err);
     // If PostgREST reports ambiguous overloads or function-not-found (PGRST203/PGRST202),
     // try a direct table query and do a plaintext comparison as a last-resort fallback.
     const code = err && err.code ? err.code : null;
@@ -141,6 +142,7 @@ export async function authCheck(username, password) {
     if (code === 'PGRST203' || code === 'PGRST202' || msg.includes('Could not choose the best candidate') || msg.includes('Could not find the function')) {
       try {
         const rows = await selectUsersByUser(username);
+        console.warn('row:', rows);
         if (Array.isArray(rows) && rows.length > 0) {
           const row = rows[0];
           // If password stored in DB equals provided password (plaintext storage), accept.
@@ -162,6 +164,7 @@ export async function authCheck(username, password) {
 
   try {
     const res2 = await callRpc('auth_check', { u: username, p: password });
+    console.warn('res2;',res2);
     if (Array.isArray(res2) && res2.length > 0) {
       if (DEV_AUTH_BYPASS) return { ...res2[0], valid: true };
       return res2[0];
