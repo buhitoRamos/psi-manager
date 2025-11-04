@@ -1,7 +1,8 @@
 import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/Dashboard.css";
+import "./dashboard.css";
 import { AuthContext } from "../../App";
+import Patients from "../../components/patients-board/patients";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -24,8 +25,9 @@ const Dashboard = () => {
         </button>
       </header>
       <main className="dashboard-content">
-        <h2>Bienvenido al Panel de Control</h2>
-        {/* Aquí irá el contenido del dashboard */}
+        <section className="patients-section">
+          <Patients />
+        </section>
       </main>
     </div>
   );

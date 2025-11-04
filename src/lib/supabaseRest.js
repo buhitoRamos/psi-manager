@@ -189,6 +189,27 @@ export async function authCheck(username, password) {
   return null;
 }
 
+/**
+ * getPatientsByUserId obtiene todos los pacientes filtrados por user_id
+ * usando RPC de Supabase (igual que authCheck)
+ */
+export async function getPatientsByUserId(userId) {
+  try {
+    // Usar RPC get_patients_by_user_id igual que auth_check
+    const result = await callRpc('get_patients_by_user_id', { user_id_param: userId });
+    // eslint-disable-next-line no-console
+    console.debug('[supabaseRest] getPatientsByUserId result:', result);
+    
+    // El RPC devuelve directamente el array de pacientes
+    return Array.isArray(result) ? result : [];
+    
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.debug('[supabaseRest] getPatientsByUserId failed:', err.message || err);
+    throw err;
+  }
+}
+
 // Raw SQL is NOT supported via REST; if you need complex queries use RPC functions or the
 // Supabase client. Remember to enforce RLS and do server-side checks for sensitive ops.
 
@@ -197,5 +218,6 @@ export default {
   insertUser,
   updateUserPass,
   deleteUser,
-  callRpc
+  callRpc,
+  getPatientsByUserId
 };
