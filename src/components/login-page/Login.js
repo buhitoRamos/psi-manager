@@ -1,9 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../App.css';
 import './Login.css';
-import { authCheck } from '../lib/supabaseRest';
-import { AuthContext } from '../App';
+import { authCheck } from '../../lib/supabaseRest';
+import { AuthContext } from '../../App';
 
 function Login() {
   const navigate = useNavigate();
