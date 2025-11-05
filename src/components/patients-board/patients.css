@@ -175,8 +175,10 @@
 
 .patient-email,
 .patient-phone,
+.patient-address,
+.patient-reason,
 .patient-age,
-.patient-date {
+.patient-insurance {
   color: #7f8c8d;
   margin: 6px 0;
   font-size: 0.95em;

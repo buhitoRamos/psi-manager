@@ -176,6 +176,9 @@ function Patients() {
                 {/* Detalles expandibles */}
                 {expandedPatient === patient.id && (
                   <div className="patient-details">
+                    {patient.age && (
+                        <p className="patient-age">⏳ {patient.age}</p>
+                        )}
                     {patient.email && (
                       <p className="patient-email">📧 {patient.email}</p>
                     )}
@@ -186,7 +189,7 @@ function Patients() {
                       <p className="patient-insurance">🏥 {patient.health_insurance}</p>
                     )}
                     {patient.reason && (
-                      <p className="patient-reason">🔍 {patient.reason}</p>
+                      <p className="patient-reason">📝 {patient.reason}</p>
                     )}
                     {patient.created_at && (
                       <p className="patient-date">
