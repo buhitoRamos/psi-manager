@@ -80,10 +80,12 @@ function Patients() {
     const name = (patient.name || '').toLowerCase();
     const lastName = (patient.last_name || '').toLowerCase();
     const fullName = `${name} ${lastName}`.trim();
+    const health_insurance = (patient.health_insurance || '').toLowerCase();
     
     return name.includes(searchLower) || 
            lastName.includes(searchLower) || 
-           fullName.includes(searchLower);
+           fullName.includes(searchLower) ||
+           health_insurance.includes(searchLower);
   });
 
   if (!isAuthenticated) {
@@ -98,6 +100,7 @@ function Patients() {
     return (
       <div className="patients-container">
         <div className="patients-loading">
+          <img src="/logo.svg" alt="Psi" className="loading" />
           <p>Cargando pacientes...</p>
         </div>
       </div>
