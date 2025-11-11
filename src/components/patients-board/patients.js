@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
+import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
-import { getPatientsByUserId } from '../../lib/supabaseRest';
+import supabaseRest, { getPatientsByUserId } from '../../lib/supabaseRest';
 import './patients.css';
 
 // Función para extraer el user_id del token
@@ -24,6 +25,16 @@ function Patients() {
   const [userId, setUserId] = useState(null);
   const [expandedPatient, setExpandedPatient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    last_name: '',
+    tel: '',
+    email: '',
+    dir: '',
+    health_insurance: '',
+    reason: ''
+  });
 
   useEffect(() => {
     async function loadPatients() {
@@ -70,6 +81,98 @@ function Patients() {
 
   const togglePatientDetails = (patientId) => {
     setExpandedPatient(expandedPatient === patientId ? null : patientId);
+  };
+
+  const addPatient = (text = 'Agregar Paciente') => {
+    return  (<button className="patients-add-btn"
+        onClick={() => toast('Funcionalidad de agregar paciente aún no implementada', {
+          icon: '🚧',
+          style: {
+            background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)',
+            color: '#92400E',
+            border: '1px solid #FBBF24',
+          }
+        })}>
+          {text}
+        </button>);
+  };
+
+  // Funciones de edición
+  const handleEditPatient = (patient) => {
+    setEditingPatient(patient.id);
+    setEditForm({
+      name: patient.name || '',
+      last_name: patient.last_name || '',
+      tel: patient.tel || '',
+      email: patient.email || '',
+      dir: patient.dir || '',
+      health_insurance: patient.health_insurance || '',
+      reason: patient.reason || ''
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPatient(null);
+    setEditForm({
+      name: '',
+      last_name: '',
+      tel: '',
+      email: '',
+      dir: '',
+      health_insurance: '',
+      reason: ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    const savePromise = async () => {
+      console.log('Guardando paciente:', editForm);
+      
+      // Actualizar paciente en la base de datos
+      const updatedPatient = await supabaseRest.updatePatient(editingPatient, editForm);
+      
+      // Actualizar el estado local con los datos actualizados
+      setPatients(patients.map(patient => 
+        patient.id === editingPatient 
+          ? { ...patient, ...updatedPatient }
+          : patient
+      ));
+      
+      handleCancelEdit();
+      return updatedPatient;
+    };
+
+    toast.promise(
+      savePromise(),
+      {
+        loading: 'Guardando cambios...',
+        success: (data) => {
+          const patientName = data.name || 'Paciente';
+          return `✅ ${patientName} actualizado exitosamente`;
+        },
+        error: (err) => `❌ Error: ${err.message}`,
+      },
+      {
+        style: {
+          minWidth: '300px',
+        },
+        success: {
+          duration: 3000,
+          icon: '🎉',
+        },
+        error: {
+          duration: 5000,
+          icon: '💥',
+        },
+      }
+    );
+  };
+
+  const handleFormChange = (field, value) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Filtrar pacientes por nombre o apellido
@@ -128,6 +231,7 @@ function Patients() {
     <div className="patients-container">
       <div className="patients-header">
         <h2>Lista de Pacientes</h2>
+        {patients.length > 0 && addPatient()}
         <p className="patients-user-info">Usuario ID: {userId}</p>
         
         {/* Campo de búsqueda */}
@@ -165,52 +269,147 @@ function Patients() {
           {filteredPatients.length > 0 ? (
             filteredPatients.map((patient, index) => (
             <div key={patient.id || index} className="patient-card">
-              <div className="patient-info">
-                <h3 className="patient-name">
-                  {patient.name || 'Sin nombre'}
-                </h3>
-                {patient.last_name && (
-                  <p className="patient-lastname">{patient.last_name}</p>
-                )}
-                {patient.tel && (
-                  <p className="patient-phone">📞 {patient.tel}</p>
-                )}
-                
-                {/* Detalles expandibles */}
-                {expandedPatient === patient.id && (
-                  <div className="patient-details">
-                    {patient.age && (
-                        <p className="patient-age">⏳ {patient.age}</p>
-                        )}
-                    {patient.email && (
-                      <p className="patient-email">📧 {patient.email}</p>
+              {editingPatient === patient.id ? (
+                // Vista de edición
+                <div className="patient-edit-form">
+                  <h3>Editar Paciente</h3>
+                  <div className="edit-form-grid">
+                    <div className="form-field">
+                      <label>Nombre:</label>
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => handleFormChange('name', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Apellido:</label>
+                      <input
+                        type="text"
+                        value={editForm.last_name}
+                        onChange={(e) => handleFormChange('last_name', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Teléfono:</label>
+                      <input
+                        type="tel"
+                        value={editForm.tel}
+                        onChange={(e) => handleFormChange('tel', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Email:</label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => handleFormChange('email', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Dirección:</label>
+                      <input
+                        type="text"
+                        value={editForm.dir}
+                        onChange={(e) => handleFormChange('dir', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Obra Social:</label>
+                      <input
+                        type="text"
+                        value={editForm.health_insurance}
+                        onChange={(e) => handleFormChange('health_insurance', e.target.value)}
+                        className="edit-input"
+                      />
+                    </div>
+                    <div className="form-field full-width">
+                      <label>Motivo:</label>
+                      <textarea
+                        value={editForm.reason}
+                        onChange={(e) => handleFormChange('reason', e.target.value)}
+                        className="edit-textarea"
+                        rows="3"
+                      />
+                    </div>
+                  </div>
+                  <div className="edit-form-actions">
+                    <button 
+                      className="save-btn"
+                      onClick={handleSaveEdit}
+                    >
+                      Guardar
+                    </button>
+                    <button 
+                      className="cancel-btn"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+                ) : (
+                // Vista normal
+                <>
+                  <div className="patient-info">
+                    <h3 className="patient-name">
+                      {patient.name || 'Sin nombre'}
+                    </h3>
+                    {patient.last_name && (
+                      <p className="patient-lastname">{patient.last_name}</p>
                     )}
-                    {patient.dir && (
-                      <p className="patient-address">🏠 {patient.dir}</p>
+                    {patient.tel && (
+                      <p className="patient-phone">📞 {patient.tel}</p>
                     )}
-                    {patient.health_insurance && (
-                      <p className="patient-insurance">🏥 {patient.health_insurance}</p>
-                    )}
-                    {patient.reason && (
-                      <p className="patient-reason">📝 {patient.reason}</p>
-                    )}
-                    {patient.created_at && (
-                      <p className="patient-date">
-                        📅 Registrado: {new Date(patient.created_at).toLocaleDateString('es-ES')}
-                      </p>
+                  
+                  {/* Detalles expandibles */}
+                  {expandedPatient === patient.id && (
+                    <div className="patient-details">
+                      {patient.age && (
+                          <p className="patient-age">⏳ {patient.age}</p>
+                          )}
+                      {patient.email && (
+                        <p className="patient-email">📧 {patient.email}</p>
+                      )}
+                      {patient.dir && (
+                        <p className="patient-address">🏠 {patient.dir}</p>
+                      )}
+                      {patient.health_insurance && (
+                        <p className="patient-insurance">🏥 {patient.health_insurance}</p>
+                      )}
+                      {patient.reason && (
+                        <p className="patient-reason">📝 {patient.reason}</p>
+                      )}
+                      {patient.created_at && (
+                        <p className="patient-date">
+                          📅 Registrado: {new Date(patient.created_at).toLocaleDateString('es-ES')}
+                        </p>
+                      )}
+                    </div>
                     )}
                   </div>
-                )}
-              </div>
-              <div className="patient-actions">
-                <button 
-                  className="patient-view-btn"
-                  onClick={() => togglePatientDetails(patient.id)}
-                >
-                  {expandedPatient === patient.id ? 'Ocultar detalles' : 'Ver detalles'}
-                </button>
-                <button className="patient-edit-btn">Editar</button>
-              </div>
+                  
+                  <div className="patient-actions">
+                    <button 
+                      className="patient-view-btn"
+                      onClick={() => togglePatientDetails(patient.id)}
+                    >
+                      {expandedPatient === patient.id ? 'Ocultar detalles' : 'Ver detalles'}
+                    </button>
+                    <button 
+                      className="patient-edit-btn"
+                      onClick={() => handleEditPatient(patient)}
+                    >
+                      Editar
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
             ))
           ) : (
@@ -228,7 +427,9 @@ function Patients() {
       ) : (
         <div className="patients-empty">
           <p>No hay pacientes registrados para este usuario.</p>
-          <button className="patients-add-btn">Agregar Primer Paciente</button>
+         {
+          addPatient('Primer Paciente')
+         }
         </div>
       )}
     </div>

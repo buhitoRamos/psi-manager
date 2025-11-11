@@ -23,18 +23,6 @@ LIMIT 5;
 -- CUIDADO: Esto permite acceso completo a todos los datos
 ALTER TABLE patients DISABLE ROW LEVEL SECURITY;
 
--- 6. Alternativamente, crear una política permisiva para testing
--- (Ejecutar solo si decides mantener RLS habilitado)
-/*
--- Eliminar políticas existentes si las hay
-DROP POLICY IF EXISTS "Allow all access for testing" ON patients;
-
--- Crear política que permita todo acceso (solo para testing)
-CREATE POLICY "Allow all access for testing" ON patients
-    FOR ALL
-    USING (true)
-    WITH CHECK (true);
-*/
 
 -- 7. Verificar permisos de la tabla para el rol anon
 SELECT grantee, privilege_type 

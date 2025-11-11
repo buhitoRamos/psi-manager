@@ -150,7 +150,7 @@
   overflow-y: auto; /* Scroll vertical cuando sea necesario */
   overflow-x: hidden;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: 1fr; /* Siempre una sola columna */
   gap: 20px;
   padding: 20px 0;
 }
@@ -276,12 +276,6 @@
 }
 
 /* Responsive design */
-@media (max-width: 1200px) {
-  .patients-list {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-}
-
 @media (max-width: 768px) {
   .patients-container {
     padding: 15px;
@@ -358,4 +352,229 @@
   50% {
     transform: translateY(-6px);
   }
+}
+
+/* Formulario de edición mejorado */
+.patient-edit-form {
+    background: linear-gradient(145deg, #ffffff, #f8f9fc);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid #e1e8f0;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08), 
+                0 4px 12px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.patient-edit-form::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.patient-edit-form h3 {
+    color: #2d3748;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.patient-edit-form h3::before {
+    content: '✏️';
+    font-size: 1.2rem;
+}
+
+.edit-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.form-field label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #4a5568;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Iconos para los labels */
+.form-field label::before {
+    font-size: 0.85rem;
+}
+
+.form-field:nth-child(1) label::before { content: '👤'; } /* Nombre */
+.form-field:nth-child(2) label::before { content: '👤'; } /* Apellido */
+.form-field:nth-child(3) label::before { content: '📞'; } /* Teléfono */
+.form-field:nth-child(4) label::before { content: '📧'; } /* Email */
+.form-field:nth-child(5) label::before { content: '🏠'; } /* Dirección */
+.form-field:nth-child(6) label::before { content: '🏥'; } /* Obra Social */
+.form-field:nth-child(7) label::before { content: '📝'; } /* Motivo */
+
+.edit-input,
+.edit-textarea {
+    padding: 14px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #ffffff;
+    font-family: inherit;
+}
+
+.edit-input:focus,
+.edit-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.edit-input:hover,
+.edit-textarea:hover {
+    border-color: #cbd5e0;
+}
+
+.edit-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+/* Efectos de validación visual */
+.edit-input:valid {
+    border-color: #48bb78;
+}
+
+.edit-input:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: #f56565;
+}
+
+.edit-form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.save-btn,
+.cancel-btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 120px;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+    box-shadow: 0 4px 14px rgba(72, 187, 120, 0.3);
+}
+
+.save-btn:hover {
+    background: linear-gradient(135deg, #38a169, #2f855a);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+}
+
+.cancel-btn {
+    background: linear-gradient(135deg, #a0aec0, #718096);
+    color: white;
+    box-shadow: 0 4px 14px rgba(160, 174, 192, 0.3);
+}
+
+.cancel-btn:hover {
+    background: linear-gradient(135deg, #718096, #4a5568);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(160, 174, 192, 0.4);
+}
+
+.cancel-btn:active {
+    transform: translateY(0);
+}
+
+/* Animación de aparición del formulario */
+.patient-edit-form {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive para formulario de edición */
+@media (min-width: 768px) {
+    .edit-form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+    }
+    
+    .form-field.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .patient-edit-form {
+        padding: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .patient-edit-form {
+        padding: 20px;
+        margin: 10px 0;
+    }
+    
+    .edit-form-actions {
+        flex-direction: column-reverse;
+        gap: 10px;
+    }
+    
+    .save-btn,
+    .cancel-btn {
+        width: 100%;
+        padding: 16px;
+    }
+    
+    .edit-form-grid {
+        gap: 15px;
+    }
 }

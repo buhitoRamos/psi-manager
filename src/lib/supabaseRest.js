@@ -23,13 +23,6 @@ function headers(contentType = 'application/json') {
   return h;
 }
 
-async function fetchGet(path) {
-  const url = `${SUPABASE_URL}${path}`;
-  const res = await fetch(url, { method: 'GET', headers: headers(null) });
-  if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
 async function fetchPost(path, body) {
   const url = `${SUPABASE_URL}${path}`;
   const res = await fetch(url, { method: 'POST', headers: headers('application/json'), body: JSON.stringify(body) });
@@ -213,11 +206,44 @@ export async function getPatientsByUserId(userId) {
 // Raw SQL is NOT supported via REST; if you need complex queries use RPC functions or the
 // Supabase client. Remember to enforce RLS and do server-side checks for sensitive ops.
 
-export default {
+/**
+ * updatePatient actualiza los datos de un paciente específico
+ */
+async function updatePatient(patientId, patientData) {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/patients?id=eq.${patientId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(patientData)
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Error updating patient:', data);
+      throw new Error(data.message || 'Error al actualizar el paciente');
+    }
+    
+    return data[0];
+  } catch (error) {
+    console.error('Error in updatePatient:', error);
+    throw error;
+  }
+}
+
+const supabaseRest = {
   selectUsersByUser,
   insertUser,
   updateUserPass,
   deleteUser,
   callRpc,
-  getPatientsByUserId
+  getPatientsByUserId,
+  updatePatient
 };
+
+export default supabaseRest;
