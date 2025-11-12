@@ -161,11 +161,17 @@
   max-width:600px; /* limitar ancho del contenedor */
   margin:0 auto; /* centrar */
 }
-/* Dos columnas en pantallas anchas */
+/* Dos columnas sólo cuando NO se está editando */
 @media (min-width: 900px) {
-  .patients-list {
+  .patients-list:not(.editing-single-column) {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* Forzar una sola columna en modo edición */
+.patients-list.editing-single-column {
+  grid-template-columns: 1fr !important;
+  max-width: 600px; /* más estrecho para enfoque en edición */
 }
 
 .patient-card {
