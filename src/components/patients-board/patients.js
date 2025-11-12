@@ -265,7 +265,7 @@ function Patients() {
       </div>
 
       {patients.length > 0 ? (
-        <div className="patients-list">
+        <div className={`patients-list ${editingPatient ? 'editing-single-column' : ''}`}>
           {filteredPatients.length > 0 ? (
             filteredPatients.map((patient, index) => (
             <div key={patient.id || index} className="patient-card">
