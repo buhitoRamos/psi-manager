@@ -23,19 +23,8 @@ function headers(contentType = 'application/json') {
   return h;
 }
 
-async function fetchPost(path, body) {
-  const url = `${SUPABASE_URL}${path}`;
-  const res = await fetch(url, { method: 'POST', headers: headers('application/json'), body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
-  return res.json();
-}
 
-async function fetchPatch(path, body) {
-  const url = `${SUPABASE_URL}${path}`;
-  const res = await fetch(url, { method: 'PATCH', headers: headers('application/json'), body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
-  return res.json();
-}
+
 
 async function fetchDelete(path) {
   const url = `${SUPABASE_URL}${path}`;
