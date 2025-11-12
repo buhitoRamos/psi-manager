@@ -30,10 +30,10 @@ BEGIN
         p.tel,
         p.email,
         p.dir,
+        p.age,
+        p.finish,
         p.health_insurance,
         p.reason,
-        p.finish,
-        p.age,
         p.user_id
     FROM patients p
     WHERE p.user_id = user_id_param

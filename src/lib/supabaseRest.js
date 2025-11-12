@@ -70,15 +70,34 @@ export async function selectUsersByUser(username) {
 
 export async function insertUser({ user, pass }) {
   // POST /rest/v1/users with Prefer: return=representation to get inserted row
-  const path = `/rest/v1/users?prefer=return=representation`;
-  // Note: PostgREST will respect RLS/policies — anon key must have insert rights
-  return fetchPost(path, { user, pass });
+  const path = `/rest/v1/users`;
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, { 
+    method: 'POST', 
+    headers: {
+      ...headers('application/json'),
+      'Prefer': 'return=representation'
+    }, 
+    body: JSON.stringify({ user, pass }) 
+  });
+  if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 export async function updateUserPass(id, newPass) {
-  // PATCH /rest/v1/users?id=eq.<id>&prefer=return=representation
-  const path = `/rest/v1/users?id=eq.${encodeURIComponent(id)}&prefer=return=representation`;
-  return fetchPatch(path, { pass: newPass });
+  // PATCH /rest/v1/users?id=eq.<id> with Prefer: return=representation
+  const path = `/rest/v1/users?id=eq.${encodeURIComponent(id)}`;
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, { 
+    method: 'PATCH', 
+    headers: {
+      ...headers('application/json'),
+      'Prefer': 'return=representation'
+    }, 
+    body: JSON.stringify({ pass: newPass }) 
+  });
+  if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 export async function deleteUser(id) {
@@ -243,7 +262,34 @@ const supabaseRest = {
   deleteUser,
   callRpc,
   getPatientsByUserId,
-  updatePatient
+  updatePatient,
+  /**
+   * createPatient inserta un nuevo paciente y retorna la fila creada.
+   * Requiere que las políticas RLS permitan insert con el anon key para la tabla patients.
+   */
+  async createPatient(patientData) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/patients`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(patientData)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        console.error('Error creating patient:', data);
+        throw new Error(data.message || 'Error al crear el paciente');
+      }
+      return data[0];
+    } catch (err) {
+      console.error('Error in createPatient:', err);
+      throw err;
+    }
+  }
 };
 
 export default supabaseRest;
