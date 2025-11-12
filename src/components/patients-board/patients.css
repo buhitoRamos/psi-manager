@@ -32,8 +32,13 @@
 /* Campo de búsqueda */
 .patients-search {
   position: relative;
-  max-width: 400px;
-  margin: 20px auto;
+  width: 100%;
+  max-width: 480px; /* límite cómodo en desktop */
+  margin: 20px auto; /* centrado horizontal */
+  padding: 0; /* sin padding extra en desktop */
+  box-sizing: border-box;
+  display:flex;
+  align-items:center;
 }
 
 .patients-search-input {
@@ -153,6 +158,14 @@
   grid-template-columns: 1fr; /* Siempre una sola columna */
   gap: 20px;
   padding: 20px 0;
+  max-width:600px; /* limitar ancho del contenedor */
+  margin:0 auto; /* centrar */
+}
+/* Dos columnas en pantallas anchas */
+@media (min-width: 900px) {
+  .patients-list {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .patient-card {
@@ -206,18 +219,19 @@
   background: #f8f9fa;
   padding: 15px 20px;
   display: flex;
-  gap: 10px;
+  flex-direction: column; /* apilar botones verticalmente */
+  gap: 12px;
   border-top: 1px solid #e1e8ed;
 }
 
 .patient-view-btn,
 .patient-edit-btn {
-  flex: 1;
-  padding: 10px 16px;
+  width: 100%; /* ocupar todo el ancho */
+  padding: 12px 18px;
   border: none;
   border-radius: 6px;
   font-size: 0.95em;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -317,7 +331,21 @@
   .patients-container {
     padding: 10px;
   }
+  .patients-search { width: 100%; max-width: 100%; margin: 12px 0; padding: 0 4px; }
+  .patients-search-input { width: 100%; padding: 10px 36px 10px 14px; font-size: 0.95em; }
+  .patients-search-clear { right: 14px; }
   
+
+@media (max-width: 360px) {
+  .patients-search-input { padding: 8px 34px 8px 12px; font-size: 0.85em; }
+  .patients-search-clear { right: 12px; font-size:14px; }
+}
+
+/* Opcional: sticky buscador en mobile grande para fácil acceso */
+@media (max-width: 600px) {
+  .patients-search { position: sticky; top: 0; z-index: 10; background: linear-gradient(180deg,#ffffff,#f6f8fb); padding: 8px 6px; }
+  .patients-list { padding-top: 8px; }
+}
   .patients-list {
     max-height: 50vh;
   }

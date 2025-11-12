@@ -1,10 +1,11 @@
 .login-page{
   min-height:100vh;
   display:flex;
-  align-items:center;
-  justify-content:center;
+  flex-direction:column;
+  align-items:center; /* mantener centrado horizontal */
+  justify-content:flex-start; /* ya no centrado vertical */
   background:linear-gradient(180deg,#f6f8fb,#e9eef8);
-  padding:24px;
+  padding:48px 24px 24px; /* mayor espacio arriba */
 }
 .login-card{
   width:100%;
@@ -104,6 +105,7 @@
 
 @media (max-width:420px){
   .login-card{padding:16px;margin:0 8px}
+  .login-page{padding:32px 16px 16px;} /* reducir padding top en móviles */
 }
 .login-logo {
   width: 80px;

@@ -28,7 +28,7 @@
   transition: background-color 0.2s;
 }
 .patients-section {
-  width: 30%;
+  width: 100%;
 }
 
 .logout-button:hover {
