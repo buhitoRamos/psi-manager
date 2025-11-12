@@ -2,7 +2,11 @@
   "name": "psi-manager-react",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://buhitosramos.github.io/psi-manager",
+  "engines": {
+    "node": "20.x",
+    "npm": ">=10 <11"
+  },
+  "packageManager": "npm@10.9.4",
   "dependencies": {
     "@supabase/supabase-js": "^2.35.0",
     "@testing-library/jest-dom": "^5.16.4",
