@@ -9,23 +9,27 @@ export const AuthContext = createContext(null);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem('token'));
 
-  const handleAuth = (token) => {
-    if (token) {
-      localStorage.setItem('token', token);
+  const handleAuth = (newToken) => {
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
     } else {
       localStorage.removeItem('token');
+      setToken(null);
     }
-    setIsAuthenticated(!!token);
+    setIsAuthenticated(!!newToken);
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
+    const storedToken = localStorage.getItem('token');
+    setToken(storedToken);
+    setIsAuthenticated(!!storedToken);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, handleAuth }}>
+    <AuthContext.Provider value={{ isAuthenticated, token, handleAuth }}>
       <Router>
         <div className="App">
           <Routes>
