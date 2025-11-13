@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./dashboard.css";
 import { AuthContext } from "../../App";
 import Patients from "../../components/patients-board/patients";
+import Menu from "../../components/Menu/Menu";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,9 +21,7 @@ const Dashboard = () => {
           <img src="/logo.svg" alt="Psi" className="dashboard-logo" />
           Dashboard
         </h1>
-        <button onClick={handleLogout} className="logout-button">
-          Cerrar Sesión
-        </button>
+        <Menu onLogout={handleLogout} />
       </header>
       <main className="dashboard-content">
         <section className="patients-section">
