@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
@@ -20,8 +20,17 @@ function Menu({ onLogout }) {
   const handleTurnos = () => {
     console.log('Turnos clicked'); // Debug log
     setIsOpen(false);
-    // TODO: Implementar navegación a turnos
-    console.log('Ir a turnos');
+    if (onNavigateToTurnos) {
+      onNavigateToTurnos();
+    }
+  };
+
+  const handlePatients = () => {
+    console.log('Pacientes clicked'); // Debug log
+    setIsOpen(false);
+    if (onNavigateToPatients) {
+      onNavigateToPatients();
+    }
   };
 
   return (
@@ -46,6 +55,10 @@ function Menu({ onLogout }) {
       {/* Menu desplegable */}
       <div className={`menu-dropdown ${isOpen ? 'open' : ''}`}>
         <nav className="menu-nav">
+          <button className="menu-item" onClick={handlePatients}>
+            <span className="menu-icon">👥</span>
+            Pacientes
+          </button>
           <button className="menu-item" onClick={handleTurnos}>
             <span className="menu-icon">📅</span>
             Turnos

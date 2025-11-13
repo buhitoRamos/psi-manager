@@ -306,6 +306,113 @@ const supabaseRest = {
       console.error('Error in deletePatient:', err);
       throw err;
     }
+  },
+
+  /**
+   * createAppointment crea una nueva cita usando la función RPC de Supabase
+   */
+  async createAppointment(appointmentData) {
+    try {
+      // Usar la función RPC create_appointment
+      const result = await callRpc('create_appointment', {
+        patient_id_param: appointmentData.patient_id,
+        user_id_param: appointmentData.user_id,
+        date_param: appointmentData.date,
+        frequency_param: appointmentData.frequency || 'unica',
+        status_param: appointmentData.status || 'en_espera',
+        amount_param: appointmentData.amount || 0,
+        observation_param: appointmentData.observation || null
+      });
+
+      console.debug('[supabaseRest] createAppointment result:', result);
+      
+      // El RPC devuelve directamente el objeto de la cita creada
+      return Array.isArray(result) ? result[0] : result;
+      
+    } catch (err) {
+      console.error('[supabaseRest] createAppointment failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
+   * getAppointmentsByUserId obtiene todas las citas de un usuario
+   */
+  async getAppointmentsByUserId(userId) {
+    try {
+      const result = await callRpc('get_appointments_by_user_id', { user_id_param: userId });
+      console.debug('[supabaseRest] getAppointmentsByUserId result:', result);
+      
+      return Array.isArray(result) ? result : [];
+      
+    } catch (err) {
+      console.error('[supabaseRest] getAppointmentsByUserId failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
+   * getAppointmentsByPatientId obtiene todas las citas de un paciente específico
+   */
+  async getAppointmentsByPatientId(patientId, userId) {
+    try {
+      const result = await callRpc('get_appointments_by_patient_id', { 
+        patient_id_param: patientId,
+        user_id_param: userId 
+      });
+      console.debug('[supabaseRest] getAppointmentsByPatientId result:', result);
+      
+      return Array.isArray(result) ? result : [];
+      
+    } catch (err) {
+      console.error('[supabaseRest] getAppointmentsByPatientId failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
+   * updateAppointment actualiza una cita existente usando RPC
+   */
+  async updateAppointment(appointmentId, appointmentData, userId) {
+    try {
+      // Usar la función RPC update_appointment
+      const result = await callRpc('update_appointment', {
+        appointment_id_param: appointmentId,
+        user_id_param: userId,
+        date_param: appointmentData.date,
+        frequency_param: appointmentData.frequency || 'unica',
+        status_param: appointmentData.status || 'en_espera',
+        amount_param: appointmentData.amount || 0,
+        observation_param: appointmentData.observation || null
+      });
+
+      console.debug('[supabaseRest] updateAppointment result:', result);
+      
+      return Array.isArray(result) ? result[0] : result;
+    } catch (error) {
+      console.error('Error in updateAppointment:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * deleteAppointment elimina una cita por su ID usando RPC
+   */
+  async deleteAppointment(appointmentId, userId) {
+    try {
+      // Usar la función RPC delete_appointment
+      const result = await callRpc('delete_appointment', {
+        appointment_id_param: appointmentId,
+        user_id_param: userId
+      });
+
+      console.debug('[supabaseRest] deleteAppointment result:', result);
+      
+      return result;
+    } catch (err) {
+      console.error('Error in deleteAppointment:', err);
+      throw err;
+    }
   }
 };
 

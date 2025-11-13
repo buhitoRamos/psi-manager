@@ -1,17 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AppointmentForm.css';
 
 function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment = null }) {
   const [formData, setFormData] = useState({
     patient_id: patient?.id || '',
-    date: existingAppointment?.date ? existingAppointment.date.substring(0, 16) : '', // formato datetime-local
-    frequency: existingAppointment?.frequency || 'unica',
-    observation: existingAppointment?.observation || '',
-    status: existingAppointment?.status || 'en_espera', // Cambiado de finalized a status
-    amount: existingAppointment?.amount || ''
+    date: '',
+    frequency: 'unica',
+    observation: '',
+    status: 'en_espera',
+    amount: ''
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Efecto para cargar los datos cuando se abre el modal o cambia existingAppointment
+  useEffect(() => {
+    if (isOpen) {
+      if (existingAppointment) {
+        // Modo edición: cargar datos existentes
+        setFormData({
+          patient_id: patient?.id || existingAppointment.patient_id,
+          date: existingAppointment.date ? existingAppointment.date.substring(0, 16) : '',
+          frequency: existingAppointment.frequency || 'unica',
+          observation: existingAppointment.observation || '',
+          status: existingAppointment.status || 'en_espera',
+          amount: existingAppointment.amount || ''
+        });
+      } else {
+        // Modo creación: limpiar formulario
+        setFormData({
+          patient_id: patient?.id || '',
+          date: '',
+          frequency: 'unica',
+          observation: '',
+          status: 'en_espera',
+          amount: ''
+        });
+      }
+    }
+  }, [isOpen, existingAppointment, patient]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({

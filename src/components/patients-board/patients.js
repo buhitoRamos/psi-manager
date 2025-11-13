@@ -20,7 +20,7 @@ function extractUserIdFromToken(token) {
 }
 
 function Patients() {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, token } = useContext(AuthContext);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -246,13 +246,27 @@ function Patients() {
 
   const handleSaveAppointment = async (appointmentData) => {
     try {
-      // TODO: Implementar la función para guardar citas en Supabase
-      console.log('Saving appointment:', appointmentData);
+      const userId = extractUserIdFromToken(token);
+      if (!userId) {
+        toast.error('Error de autenticación');
+        return;
+      }
+
+      // Agregar user_id a los datos de la cita
+      const appointmentWithUserId = {
+        ...appointmentData,
+        user_id: userId
+      };
+
+      console.log('Saving appointment:', appointmentWithUserId);
       
-      // Placeholder para la llamada a la API
-      // await supabaseRest.createAppointment(appointmentData);
+      // Llamar al servicio para crear la cita
+      await supabaseRest.createAppointment(appointmentWithUserId);
       
       toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+      
+      // Cerrar el formulario
+      handleCloseAppointment();
     } catch (error) {
       console.error('Error saving appointment:', error);
       toast.error('Error al guardar el turno');
