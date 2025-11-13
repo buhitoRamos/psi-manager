@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
 import supabaseRest, { getPatientsByUserId } from '../../lib/supabaseRest';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
+import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import './patients.css';
 
 // Función para extraer el user_id del token
@@ -38,6 +39,10 @@ function Patients() {
     reason: ''
   });
   const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    patient: null
+  });
+  const [appointmentForm, setAppointmentForm] = useState({
     isOpen: false,
     patient: null
   });
@@ -225,6 +230,36 @@ function Patients() {
     setConfirmModal({ isOpen: false, patient: null });
   };
 
+  const handleOpenAppointment = (patient) => {
+    setAppointmentForm({
+      isOpen: true,
+      patient: patient
+    });
+  };
+
+  const handleCloseAppointment = () => {
+    setAppointmentForm({
+      isOpen: false,
+      patient: null
+    });
+  };
+
+  const handleSaveAppointment = async (appointmentData) => {
+    try {
+      // TODO: Implementar la función para guardar citas en Supabase
+      console.log('Saving appointment:', appointmentData);
+      
+      // Placeholder para la llamada a la API
+      // await supabaseRest.createAppointment(appointmentData);
+      
+      toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+    } catch (error) {
+      console.error('Error saving appointment:', error);
+      toast.error('Error al guardar el turno');
+      throw error;
+    }
+  };
+
   // Filtrar pacientes por nombre o apellido
   const filteredPatients = patients.filter(patient => {
     if (!searchTerm) return true;
@@ -410,7 +445,7 @@ function Patients() {
         <div className={`patients-list ${editingPatient ? 'editing-single-column' : ''} ${filteredPatients.length === 1 ? 'single-patient' : ''}`}>
           {filteredPatients.length > 0 ? (
             filteredPatients.map((patient, index) => (
-              <div key={patient.id || index} className="patient-card">
+              <div key={patient.id || index} className={`patient-card ${expandedPatient === patient.id ? 'expanded' : ''}`}>
                 {editingPatient === patient.id ? (
                   <div className="patient-edit-form">
                     <h3>Editar Paciente</h3>
@@ -499,8 +534,19 @@ function Patients() {
                 ) : (
                   <>
                     <div className="patient-info">
-                      <h3 className="patient-name">{patient.name || 'Sin nombre'}</h3>
-                      {patient.last_name && <p className="patient-lastname">{patient.last_name}</p>}
+                      <div className="patient-header">
+                        <div className="patient-title">
+                          <h3 className="patient-name">{patient.name || 'Sin nombre'}</h3>
+                          {patient.last_name && <p className="patient-lastname">{patient.last_name}</p>}
+                        </div>
+                        <button 
+                          className="appointment-btn"
+                          onClick={() => handleOpenAppointment(patient)}
+                          title="Programar turno"
+                        >
+                          📅
+                        </button>
+                      </div>
                       {patient.tel && <p className="patient-phone">� {patient.tel}</p>}
                       {expandedPatient === patient.id && (
                         <div className="patient-details">
@@ -515,26 +561,34 @@ function Patients() {
                         </div>
                       )}
                     </div>
-                    <div className="patient-actions">
+                    
+                    {/* Botón Ver siempre visible */}
+                    <div className="patient-actions-preview">
                       <button
                         className="patient-view-btn"
                         onClick={() => togglePatientDetails(patient.id)}
                       >
                         {expandedPatient === patient.id ? 'Ocultar' : 'Ver'}
                       </button>
-                      <button
-                        className="patient-edit-btn"
-                        onClick={() => handleEditPatient(patient)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="patient-delete-btn"
-                        onClick={() => handleDeletePatient(patient)}
-                      >
-                        Eliminar
-                      </button>
                     </div>
+
+                    {/* Botones adicionales solo cuando está expandido */}
+                    {expandedPatient === patient.id && (
+                      <div className="patient-actions-expanded">
+                        <button
+                          className="patient-edit-btn"
+                          onClick={() => handleEditPatient(patient)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="patient-delete-btn"
+                          onClick={() => handleDeletePatient(patient)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -567,6 +621,14 @@ function Patients() {
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
+      />
+
+      {/* Modal del formulario de turnos */}
+      <AppointmentForm
+        isOpen={appointmentForm.isOpen}
+        onClose={handleCloseAppointment}
+        onSave={handleSaveAppointment}
+        patient={appointmentForm.patient}
       />
     </div>
   );

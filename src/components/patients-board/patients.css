@@ -1,12 +1,12 @@
 .patients-container {
-  padding: 10px 20px 20px; /* reducido padding top de 20px a 10px */
+  padding: 5px 20px 20px; /* reducido padding top de 10px a 5px */
   max-width: 1200px;
   margin: 0 auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .patients-header {
-  margin-bottom: 15px; /* reducido de 30px a 15px */
+  margin-bottom: 10px; /* reducido de 15px a 10px */
   text-align: center;
 }
 
@@ -185,6 +185,12 @@
   overflow: hidden;
 }
 
+/* Paciente expandido ocupa ambas columnas en layout de 2 columnas */
+.patient-card.expanded {
+  grid-column: 1 / -1; /* Ocupa desde la primera columna hasta la última */
+  max-width: none; /* Permitir que use todo el ancho disponible */
+}
+
 .patient-card:hover {
   transform: translateY(-1px); /* movimiento más sutil */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* sombra proporcional */
@@ -194,16 +200,52 @@
   padding: 12px 16px; /* reducido de 20px a 12px 16px */
 }
 
+/* Header del paciente con botón de turnos */
+.patient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.patient-title {
+  flex: 1;
+}
+
+/* Botón de turnos */
+.appointment-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+}
+
+.appointment-btn:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
 .patient-name {
   color: #2c3e50;
-  margin: 0 0 6px 0; /* reducido de 8px a 6px */
+  margin: 0 0 4px 0; /* reducido margen inferior */
   font-size: 1.15em; /* reducido de 1.3em a 1.15em */
   font-weight: 600;
 }
 
 .patient-lastname {
   color: #34495e;
-  margin: 0 0 8px 0; /* reducido de 12px a 8px */
+  margin: 0 0 4px 0; /* reducido margen inferior */
   font-size: 1.0em; /* reducido de 1.1em a 1.0em */
   font-weight: 500;
 }
@@ -229,6 +271,26 @@
   flex-direction: column; /* apilar botones verticalmente */
   gap: 6px; /* reducido de 8px a 6px */
   border-top: 1px solid #e1e8ed;
+}
+
+/* Contenedor para botón Ver (siempre visible) */
+.patient-actions-preview {
+  background: #f8f9fa;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #e1e8ed;
+}
+
+/* Contenedor para botones expandidos (solo cuando está abierto) */
+.patient-actions-expanded {
+  background: #f1f3f4;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid #e1e8ed;
+  animation: slideDown 0.2s ease-out;
 }
 
 .patient-view-btn,
@@ -269,6 +331,20 @@
 
 .patient-delete-btn:hover {
   background: #c0392b;
+}
+
+/* Animación para botones expandidos */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 100px;
+    transform: translateY(0);
+  }
 }
 
 /* Empty state */
@@ -332,7 +408,8 @@
     font-size: 1.8em;
   }
   
-  .patient-actions {
+  .patient-actions-initial,
+  .patient-actions-expanded {
     flex-direction: column;
     gap: 8px;
   }
@@ -371,7 +448,8 @@
     padding: 15px;
   }
   
-  .patient-actions {
+  .patient-actions-initial,
+  .patient-actions-expanded {
     padding: 12px 15px;
   }
   
