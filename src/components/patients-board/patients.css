@@ -161,17 +161,18 @@
   max-width:600px; /* limitar ancho del contenedor */
   margin:0 auto; /* centrar */
 }
-/* Dos columnas sólo cuando NO se está editando */
+/* Dos columnas sólo cuando NO se está editando Y hay más de 1 paciente */
 @media (min-width: 900px) {
-  .patients-list:not(.editing-single-column) {
+  .patients-list:not(.editing-single-column):not(.single-patient) {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-/* Forzar una sola columna en modo edición */
-.patients-list.editing-single-column {
+/* Forzar una sola columna en modo edición o con un solo paciente */
+.patients-list.editing-single-column,
+.patients-list.single-patient {
   grid-template-columns: 1fr !important;
-  max-width: 600px; /* más estrecho para enfoque en edición */
+  max-width: 600px; /* más estrecho para enfoque */
 }
 
 .patient-card {
@@ -223,20 +224,21 @@
 
 .patient-actions {
   background: #f8f9fa;
-  padding: 15px 20px;
+  padding: 12px 16px; /* padding más pequeño */
   display: flex;
   flex-direction: column; /* apilar botones verticalmente */
-  gap: 12px;
+  gap: 8px; /* menos espacio entre botones */
   border-top: 1px solid #e1e8ed;
 }
 
 .patient-view-btn,
-.patient-edit-btn {
+.patient-edit-btn,
+.patient-delete-btn {
   width: 100%; /* ocupar todo el ancho */
-  padding: 12px 18px;
+  padding: 8px 12px; /* botones más pequeños */
   border: none;
-  border-radius: 6px;
-  font-size: 0.95em;
+  border-radius: 4px;
+  font-size: 0.85em; /* texto más pequeño */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -258,6 +260,15 @@
 
 .patient-edit-btn:hover {
   background: #e67e22;
+}
+
+.patient-delete-btn {
+  background: #e74c3c;
+  color: white;
+}
+
+.patient-delete-btn:hover {
+  background: #c0392b;
 }
 
 /* Empty state */

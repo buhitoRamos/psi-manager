@@ -278,6 +278,34 @@ const supabaseRest = {
       console.error('Error in createPatient:', err);
       throw err;
     }
+  },
+
+  /**
+   * deletePatient elimina un paciente por su ID.
+   * Requiere que las políticas RLS permitan delete con el anon key para la tabla patients.
+   */
+  async deletePatient(patientId, userId) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/patients?id=eq.${patientId}&user_id=eq.${userId}`, {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Error deleting patient:', data);
+        throw new Error(data.message || 'Error al eliminar el paciente');
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error in deletePatient:', err);
+      throw err;
+    }
   }
 };
 
