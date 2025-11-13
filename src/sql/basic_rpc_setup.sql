@@ -6,6 +6,7 @@
 -- ELIMINAR FUNCIONES EXISTENTES (si existen)
 DROP FUNCTION IF EXISTS auth_check_secure(text, text);
 DROP FUNCTION IF EXISTS get_patients_by_user_id(bigint);
+DROP FUNCTION IF EXISTS delete_patient_by_id(bigint, bigint);
 
 -- 1. FUNCIÓN DE AUTENTICACIÓN (la que ya usas)
 CREATE OR REPLACE FUNCTION auth_check_secure(
@@ -89,6 +90,55 @@ GRANT EXECUTE ON FUNCTION auth_check_secure(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_patients_by_user_id(bigint) TO anon;
 GRANT EXECUTE ON FUNCTION get_patients_by_user_id(bigint) TO authenticated;
 
+-- 3. FUNCIÓN PARA ELIMINAR PACIENTE (nueva)
+CREATE OR REPLACE FUNCTION delete_patient_by_id(
+    patient_id_param bigint,
+    user_id_param bigint
+)
+RETURNS TABLE(
+    success boolean,
+    message text,
+    deleted_id bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    patient_exists boolean;
+    deleted_patient_id bigint;
+BEGIN
+    -- Verificar que el paciente existe y pertenece al usuario
+    SELECT EXISTS(
+        SELECT 1 FROM patients 
+        WHERE id = patient_id_param 
+        AND user_id = user_id_param
+    ) INTO patient_exists;
+    
+    IF NOT patient_exists THEN
+        RETURN QUERY SELECT false, 'Paciente no encontrado o no pertenece al usuario'::text, NULL::bigint;
+        RETURN;
+    END IF;
+    
+    -- Eliminar el paciente
+    DELETE FROM patients 
+    WHERE id = patient_id_param 
+    AND user_id = user_id_param
+    RETURNING id INTO deleted_patient_id;
+    
+    -- Verificar que se eliminó
+    IF deleted_patient_id IS NOT NULL THEN
+        RETURN QUERY SELECT true, 'Paciente eliminado exitosamente'::text, deleted_patient_id;
+    ELSE
+        RETURN QUERY SELECT false, 'Error al eliminar el paciente'::text, NULL::bigint;
+    END IF;
+END;
+$$;
+
+-- OTORGAR PERMISOS PARA DELETE
+GRANT EXECUTE ON FUNCTION delete_patient_by_id(bigint, bigint) TO anon;
+GRANT EXECUTE ON FUNCTION delete_patient_by_id(bigint, bigint) TO authenticated;
+
 -- DOCUMENTACIÓN
 COMMENT ON FUNCTION auth_check_secure(text, text) IS 'Verifica credenciales de usuario';
 COMMENT ON FUNCTION get_patients_by_user_id(bigint) IS 'Obtiene pacientes de un usuario específico';
+COMMENT ON FUNCTION delete_patient_by_id(bigint, bigint) IS 'Elimina un paciente verificando que pertenezca al usuario';

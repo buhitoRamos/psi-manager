@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
 import supabaseRest, { getPatientsByUserId } from '../../lib/supabaseRest';
+import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import './patients.css';
 
 // Función para extraer el user_id del token
@@ -32,8 +33,13 @@ function Patients() {
     tel: '',
     email: '',
     dir: '',
+    age: '',
     health_insurance: '',
     reason: ''
+  });
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    patient: null
   });
 
   useEffect(() => {
@@ -91,6 +97,7 @@ function Patients() {
       tel: '',
       email: '',
       dir: '',
+      age: '',
       health_insurance: '',
       reason: ''
     });
@@ -116,6 +123,7 @@ function Patients() {
       tel: patient.tel || '',
       email: patient.email || '',
       dir: patient.dir || '',
+      age: patient.age || '',
       health_insurance: patient.health_insurance || '',
       reason: patient.reason || ''
     });
@@ -129,6 +137,7 @@ function Patients() {
       tel: '',
       email: '',
       dir: '',
+      age: '',
       health_insurance: '',
       reason: ''
     });
@@ -178,6 +187,42 @@ function Patients() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleDeletePatient = (patient) => {
+    setConfirmModal({
+      isOpen: true,
+      patient: patient
+    });
+  };
+
+  const confirmDeletePatient = async () => {
+    const patient = confirmModal.patient;
+    setConfirmModal({ isOpen: false, patient: null });
+
+    const deletePromise = async () => {
+      await supabaseRest.deletePatient(patient.id, userId);
+      setPatients(patients.filter(p => p.id !== patient.id));
+      return patient;
+    };
+
+    toast.promise(
+      deletePromise(),
+      {
+        loading: 'Eliminando paciente...',
+        success: (data) => `🗑️ ${data.name || 'Paciente'} eliminado correctamente`,
+        error: (err) => `❌ Error al eliminar: ${err.message}`,
+      },
+      {
+        style: { minWidth: '300px' },
+        success: { duration: 3000, icon: '✅' },
+        error: { duration: 5000, icon: '💥' },
+      }
+    );
+  };
+
+  const cancelDeletePatient = () => {
+    setConfirmModal({ isOpen: false, patient: null });
   };
 
   // Filtrar pacientes por nombre o apellido
@@ -322,6 +367,18 @@ function Patients() {
                   />
                 </div>
                 <div className="form-field">
+                  <label>Edad:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    value={editForm.age}
+                    onChange={(e) => handleFormChange('age', e.target.value)}
+                    className="edit-input"
+                    placeholder="Años"
+                  />
+                </div>
+                <div className="form-field">
                   <label>Obra Social:</label>
                   <input
                     type="text"
@@ -350,7 +407,7 @@ function Patients() {
       )}
 
       {patients.length > 0 ? (
-        <div className={`patients-list ${editingPatient ? 'editing-single-column' : ''}`}>
+        <div className={`patients-list ${editingPatient ? 'editing-single-column' : ''} ${filteredPatients.length === 1 ? 'single-patient' : ''}`}>
           {filteredPatients.length > 0 ? (
             filteredPatients.map((patient, index) => (
               <div key={patient.id || index} className="patient-card">
@@ -404,6 +461,18 @@ function Patients() {
                         />
                       </div>
                       <div className="form-field">
+                        <label>Edad:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="120"
+                          value={editForm.age}
+                          onChange={(e) => handleFormChange('age', e.target.value)}
+                          className="edit-input"
+                          placeholder="Años"
+                        />
+                      </div>
+                      <div className="form-field">
                         <label>Obra Social:</label>
                         <input
                           type="text"
@@ -451,13 +520,19 @@ function Patients() {
                         className="patient-view-btn"
                         onClick={() => togglePatientDetails(patient.id)}
                       >
-                        {expandedPatient === patient.id ? 'Ocultar detalles' : 'Ver detalles'}
+                        {expandedPatient === patient.id ? 'Ocultar' : 'Ver'}
                       </button>
                       <button
                         className="patient-edit-btn"
                         onClick={() => handleEditPatient(patient)}
                       >
                         Editar
+                      </button>
+                      <button
+                        className="patient-delete-btn"
+                        onClick={() => handleDeletePatient(patient)}
+                      >
+                        Eliminar
                       </button>
                     </div>
                   </>
@@ -481,6 +556,18 @@ function Patients() {
          }
         </div>
       )}
+
+      {/* Modal de confirmación para eliminar */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={cancelDeletePatient}
+        onConfirm={confirmDeletePatient}
+        title="Eliminar Paciente"
+        message={`¿Estás seguro de que quieres eliminar a ${confirmModal.patient?.name || 'este paciente'}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }
