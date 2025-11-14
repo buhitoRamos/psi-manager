@@ -701,3 +701,98 @@
         gap: 15px;
     }
 }
+
+/* Estilos para el indicador de deuda */
+.patient-debt-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #dc2626;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.debt-icon {
+    font-size: 1rem;
+}
+
+.debt-text {
+    flex: 1;
+}
+
+/* Estilos para el resumen financiero */
+.patient-financial-summary {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.financial-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.financial-item:not(:last-child) {
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+
+.financial-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.financial-amount {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.financial-debt {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid #e2e8f0;
+    font-size: 0.9rem;
+}
+
+.financial-amount.debt {
+    color: #dc2626; /* rojo para deuda */
+}
+
+.financial-amount.credit {
+    color: #059669; /* verde para crédito a favor */
+}
+
+.financial-amount.neutral {
+    color: #6b7280; /* gris para saldo cero */
+}
+
+/* Responsive para indicador de deuda */
+@media (max-width: 600px) {
+    .patient-debt-alert {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    .patient-financial-summary {
+        padding: 0.5rem;
+    }
+    
+    .financial-item {
+        font-size: 0.8rem;
+    }
+    
+    .financial-debt {
+        font-size: 0.85rem;
+    }
+}
