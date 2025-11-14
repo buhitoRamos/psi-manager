@@ -28,6 +28,44 @@ function formatCurrency(amount) {
   }).format(amount);
 }
 
+// Función para formatear fecha de próxima cita
+function formatNextAppointmentDate(dateString) {
+  if (!dateString) return 'Sin turnos programados';
+  
+  try {
+    const appointmentDate = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const appointmentDay = new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate());
+    
+    // Determinar si es hoy, mañana o una fecha específica
+    let datePrefix = '';
+    if (appointmentDay.getTime() === today.getTime()) {
+      datePrefix = 'Hoy';
+    } else if (appointmentDay.getTime() === tomorrow.getTime()) {
+      datePrefix = 'Mañana';
+    } else {
+      // Formatear fecha normal
+      datePrefix = appointmentDate.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short'
+      });
+    }
+    
+    // Formatear hora
+    const timeString = appointmentDate.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    return `${datePrefix} ${timeString}`;
+  } catch (error) {
+    return 'Fecha inválida';
+  }
+}
+
 function Patients() {
   const { isAuthenticated, token } = useContext(AuthContext);
   const [patients, setPatients] = useState([]);
@@ -82,10 +120,10 @@ function Patients() {
 
         setUserId(extractedUserId);
         
-        // Consultar la API REST de Supabase para obtener pacientes con información de deuda
-        const patientsData = await supabaseRest.getPatientsWithDebt(extractedUserId);
+        // Consultar la API REST de Supabase para obtener pacientes con información de deuda y próxima cita
+        const patientsData = await supabaseRest.getPatientsWithNextAppointment(extractedUserId);
         // eslint-disable-next-line no-console
-        console.debug('[Patients] getPatientsWithDebt result:', patientsData);
+        console.debug('[Patients] getPatientsWithNextAppointment result:', patientsData);
         
         setPatients(patientsData || []);
 
@@ -274,8 +312,8 @@ function Patients() {
       
       toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
       
-      // Recargar pacientes con información de deuda actualizada
-      const updatedPatients = await supabaseRest.getPatientsWithDebt(userId);
+      // Recargar pacientes con información de deuda y próxima cita actualizada
+      const updatedPatients = await supabaseRest.getPatientsWithNextAppointment(userId);
       setPatients(updatedPatients || []);
       
       // Cerrar el formulario
@@ -604,9 +642,21 @@ function Patients() {
                           </div>
                         </div>
                       )}
-                      {patient.tel && <p className="patient-phone">� {patient.tel}</p>}
+                      
+                      {/* Próxima cita (donde antes estaba el teléfono) */}
+                      <div className="patient-next-appointment">
+                        <span className="next-appointment-icon">📅</span>
+                        <span className="next-appointment-text">
+                          {patient.nextAppointment 
+                            ? formatNextAppointmentDate(patient.nextAppointment.date)
+                            : 'Sin turnos programados'
+                          }
+                        </span>
+                      </div>
+                      
                       {expandedPatient === patient.id && (
                         <div className="patient-details">
+                          {patient.tel && <p className="patient-phone">📞 {patient.tel}</p>}
                           {patient.age && <p className="patient-age">⏳ {patient.age}</p>}
                           {patient.email && <p className="patient-email">📧 {patient.email}</p>}
                           {patient.dir && <p className="patient-address">🏠 {patient.dir}</p>}

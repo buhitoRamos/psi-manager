@@ -42,13 +42,13 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
     e.preventDefault();
     
     if (!formData.patient_id || !formData.payment) {
-      alert('Por favor complete los campos obligatorios (paciente y monto)');
+      alert('Por favor complete los campos obligatorios (paciente y honorarios)');
       return;
     }
 
     const paymentAmount = parseFloat(formData.payment);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      alert('Por favor ingrese un monto válido');
+      alert('Por favor ingrese un honorarios válido');
       return;
     }
 
@@ -121,10 +121,10 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
             </select>
           </div>
 
-          {/* Monto del pago */}
+          {/* honorarios del pago */}
           <div className="form-group">
             <label htmlFor="payment" className="form-label">
-              Monto del Pago *
+              honorarios del Pago *
             </label>
             <div className="amount-input-wrapper">
               <span className="currency-symbol">$</span>
@@ -142,7 +142,7 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
               />
             </div>
             <small className="form-help">
-              Ingrese el monto sin el símbolo de moneda
+              Ingrese el honorarios sin el símbolo de moneda
             </small>
           </div>
 
