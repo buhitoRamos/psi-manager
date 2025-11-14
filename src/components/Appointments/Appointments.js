@@ -18,6 +18,15 @@ function extractUserIdFromToken(token) {
   return null;
 }
 
+// Función para normalizar texto removiendo acentos/tildes
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Descompone los caracteres con acentos
+    .replace(/[\u0300-\u036f]/g, '') // Remueve las marcas diacríticas (acentos)
+    .trim();
+}
+
 function Appointments() {
   const { isAuthenticated, token } = useContext(AuthContext);
   const [appointments, setAppointments] = useState([]);
@@ -29,6 +38,11 @@ function Appointments() {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     appointment: null
+  });
+  const [bulkDeleteModal, setBulkDeleteModal] = useState({
+    isOpen: false,
+    patientId: null,
+    patientName: ''
   });
   const [editingAppointment, setEditingAppointment] = useState({
     isOpen: false,
@@ -154,16 +168,86 @@ function Appointments() {
     );
   };
 
+  // Función para eliminar todos los turnos pendientes de un paciente
+  const handleBulkDeletePendingAppointments = (patientId, patientName) => {
+    setBulkDeleteModal({
+      isOpen: true,
+      patientId,
+      patientName
+    });
+  };
+
+  // Función para confirmar la eliminación masiva de turnos pendientes
+  const confirmBulkDeletePendingAppointments = async () => {
+    const { patientId, patientName } = bulkDeleteModal;
+    setBulkDeleteModal({ isOpen: false, patientId: null, patientName: '' });
+
+    const deletePromise = async () => {
+      const result = await supabaseRest.deletePendingAppointmentsByPatient(patientId, userId);
+      
+      // Actualizar la lista de turnos eliminando los turnos pendientes del paciente
+      setAppointments(appointments.filter(apt => 
+        !(apt.patient_id === patientId && apt.status === 'en_espera')
+      ));
+      
+      return result;
+    };
+
+    toast.promise(
+      deletePromise(),
+      {
+        loading: 'Eliminando turnos pendientes...',
+        success: (data) => `🗑️ ${data.deletedCount} turnos pendientes de ${patientName} eliminados`,
+        error: (err) => `❌ Error al eliminar turnos: ${err.message}`,
+      },
+      {
+        style: { minWidth: '350px' },
+        success: { duration: 4000, icon: '✅' },
+        error: { duration: 5000, icon: '💥' },
+      }
+    );
+  };
+
   // Función para cancelar la eliminación
   const cancelDeleteAppointment = () => {
     setConfirmModal({ isOpen: false, appointment: null });
   };
 
-  // Filtrar turnos por nombre de paciente y estado
+  // Obtener pacientes únicos que tienen turnos pendientes
+  const getPatientsWithPendingAppointments = () => {
+    const patientsMap = new Map();
+    
+    appointments
+      .filter(appointment => appointment.status === 'en_espera')
+      .forEach(appointment => {
+        const patientKey = appointment.patient_id;
+        if (!patientsMap.has(patientKey)) {
+          patientsMap.set(patientKey, {
+            id: appointment.patient_id,
+            name: `${appointment.patient_name || ''} ${appointment.patient_last_name || ''}`.trim(),
+            pendingCount: 0
+          });
+        }
+        patientsMap.get(patientKey).pendingCount++;
+      });
+    
+    return Array.from(patientsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  // Filtrar turnos por nombre de paciente y estado (ignorando acentos)
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = !searchTerm || 
-      (appointment.patient_name && appointment.patient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (appointment.patient_last_name && appointment.patient_last_name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = !searchTerm || (() => {
+      const searchNormalized = normalizeText(searchTerm);
+      const patientName = normalizeText(appointment.patient_name || '');
+      const patientLastName = normalizeText(appointment.patient_last_name || '');
+      const fullPatientName = normalizeText(`${appointment.patient_name || ''} ${appointment.patient_last_name || ''}`.trim());
+      const observation = normalizeText(appointment.observation || '');
+      
+      return patientName.includes(searchNormalized) ||
+             patientLastName.includes(searchNormalized) ||
+             fullPatientName.includes(searchNormalized) ||
+             observation.includes(searchNormalized);
+    })();
     
     const matchesStatus = filterStatus === 'all' || appointment.status === filterStatus;
     
@@ -266,7 +350,7 @@ function Appointments() {
           <div className="appointments-search">
             <input
               type="text"
-              placeholder="Buscar por nombre del paciente..."
+              placeholder="Buscar por nombre del paciente u observación..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="appointments-search-input"
@@ -295,6 +379,33 @@ function Appointments() {
             </select>
           </div>
         </div>
+
+        {/* Sección de eliminación masiva de turnos pendientes */}
+        {getPatientsWithPendingAppointments().length > 0 && (
+          <div className="appointments-bulk-delete">
+            <h3>🗑️ Eliminar Turnos Pendientes por Paciente</h3>
+            <p className="bulk-delete-description">
+              Elimina todos los turnos en espera de un paciente específico (no afecta turnos finalizados o cancelados)
+            </p>
+            <div className="bulk-delete-patients">
+              {getPatientsWithPendingAppointments().map(patient => (
+                <div key={patient.id} className="bulk-delete-patient-item">
+                  <div className="patient-info">
+                    <span className="patient-name">{patient.name}</span>
+                    <span className="pending-count">{patient.pendingCount} turno{patient.pendingCount !== 1 ? 's' : ''} pendiente{patient.pendingCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  <button
+                    onClick={() => handleBulkDeletePendingAppointments(patient.id, patient.name)}
+                    className="bulk-delete-btn"
+                    title={`Eliminar todos los turnos pendientes de ${patient.name}`}
+                  >
+                    🗑️ Eliminar Pendientes
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         <p className="appointments-count">
           {appointments.length === 0 
@@ -416,6 +527,22 @@ function Appointments() {
         title="Eliminar Turno"
         message={`¿Estás seguro de que quieres eliminar el turno de ${confirmModal.appointment?.patient_name || ''} ${confirmModal.appointment?.patient_last_name || ''}? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Modal de confirmación para eliminación masiva */}
+      <ConfirmModal
+        isOpen={bulkDeleteModal.isOpen}
+        onClose={() => setBulkDeleteModal({ isOpen: false, patientId: null, patientName: '' })}
+        onConfirm={confirmBulkDeletePendingAppointments}
+        title="Eliminar Todos los Turnos Pendientes"
+        message={`¿Estás seguro de que quieres eliminar TODOS los turnos pendientes de ${bulkDeleteModal.patientName}? 
+
+Solo se eliminarán los turnos en estado "En Espera". Los turnos finalizados o cancelados no se verán afectados.
+
+Esta acción no se puede deshacer.`}
+        confirmText="Eliminar Todos los Pendientes"
         cancelText="Cancelar"
         type="danger"
       />

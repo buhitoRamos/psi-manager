@@ -285,3 +285,113 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* Estilos para vista previa de turnos recurrentes */
+.recurring-preview {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #e8f4f8;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.recurring-info {
+  color: #0c5460;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dates-count {
+  font-weight: 600;
+  color: #0a4e5c;
+}
+
+/* Animación suave para la aparición */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para modal de confirmación de turnos recurrentes */
+.appointment-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 20px;
+}
+
+.appointment-confirm-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+.appointment-confirm-header {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  padding: 20px 24px;
+}
+
+.appointment-confirm-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appointment-confirm-content {
+  padding: 24px;
+  line-height: 1.5;
+}
+
+.appointment-confirm-content p {
+  margin: 0 0 16px 0;
+  color: #374151;
+}
+
+.appointment-confirm-question {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  color: #2d3748;
+  text-align: center;
+}
+
+.appointment-confirm-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  background: #f8fafc;
+  justify-content: flex-end;
+}
+
+.appointment-confirm-actions .btn {
+  min-width: 100px;
+}

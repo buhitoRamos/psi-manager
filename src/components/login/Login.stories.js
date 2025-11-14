@@ -1,11 +1,12 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 import './Login.css';
 
 // Componente Login simplificado para Storybook
 const SimpleLogin = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert('Demo de Storybook - Login funcional!');
+    toast.success('Demo de Storybook - Login funcional!');
   };
 
   return (

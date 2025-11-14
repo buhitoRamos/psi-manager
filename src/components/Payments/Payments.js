@@ -18,6 +18,15 @@ function extractUserIdFromToken(token) {
   return null;
 }
 
+// Función para normalizar texto removiendo acentos/tildes
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Descompone los caracteres con acentos
+    .replace(/[\u0300-\u036f]/g, '') // Remueve las marcas diacríticas (acentos)
+    .trim();
+}
+
 // Función para formatear fecha
 function formatDate(dateString) {
   if (!dateString) return 'No especificada';
@@ -204,13 +213,16 @@ function Payments() {
     return patient ? `${patient.name} ${patient.last_name}` : 'Paciente no encontrado';
   };
 
-  // Filtrar pagos por término de búsqueda
+  // Filtrar pagos por término de búsqueda (ignorando acentos)
   const filteredPayments = payments.filter(payment => {
-    const patientName = getPatientName(payment.patient_id).toLowerCase();
-    const searchLower = searchTerm.toLowerCase();
+    if (!searchTerm) return true;
     
-    return patientName.includes(searchLower) ||
-           (payment.contribution_ob && payment.contribution_ob.toLowerCase().includes(searchLower));
+    const searchNormalized = normalizeText(searchTerm);
+    const patientName = normalizeText(getPatientName(payment.patient_id));
+    const observation = normalizeText(payment.contribution_ob || '');
+    
+    return patientName.includes(searchNormalized) ||
+           observation.includes(searchNormalized);
   });
 
   if (loading) {
@@ -256,7 +268,7 @@ function Payments() {
           <div className="payments-search">
             <input
               type="text"
-              placeholder="Buscar por nombre del paciente..."
+              placeholder="Buscar por nombre del paciente u observación..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="payments-search-input"
