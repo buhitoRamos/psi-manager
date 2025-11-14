@@ -413,6 +413,128 @@ const supabaseRest = {
       console.error('Error in deleteAppointment:', err);
       throw err;
     }
+  },
+
+  /**
+   * FUNCIONES PARA PAGOS
+   */
+
+  /**
+   * createPayment crea un nuevo pago
+   */
+  async createPayment(paymentData) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error creating payment:', data);
+        throw new Error(data.message || 'Error al crear el pago');
+      }
+      
+      console.debug('[supabaseRest] createPayment result:', data[0]);
+      return data[0];
+    } catch (err) {
+      console.error('Error in createPayment:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * getPaymentsByUserId obtiene todos los pagos de un usuario
+   */
+  async getPaymentsByUserId(userId) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions?user_id=eq.${userId}&order=created_at.desc`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error getting payments:', data);
+        throw new Error(data.message || 'Error al obtener los pagos');
+      }
+      
+      console.debug('[supabaseRest] getPaymentsByUserId result:', data);
+      return data;
+    } catch (err) {
+      console.error('Error in getPaymentsByUserId:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * updatePayment actualiza un pago existente
+   */
+  async updatePayment(paymentId, paymentData, userId) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions?id=eq.${paymentId}&user_id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error updating payment:', data);
+        throw new Error(data.message || 'Error al actualizar el pago');
+      }
+      
+      console.debug('[supabaseRest] updatePayment result:', data[0]);
+      return data[0];
+    } catch (err) {
+      console.error('Error in updatePayment:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * deletePayment elimina un pago por su ID
+   */
+  async deletePayment(paymentId, userId) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions?id=eq.${paymentId}&user_id=eq.${userId}`, {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Error deleting payment:', data);
+        throw new Error(data.message || 'Error al eliminar el pago');
+      }
+      
+      console.debug('[supabaseRest] deletePayment success');
+      return true;
+    } catch (err) {
+      console.error('Error in deletePayment:', err);
+      throw err;
+    }
   }
 };
 

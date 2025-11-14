@@ -4,6 +4,7 @@ import "./dashboard.css";
 import { AuthContext } from "../../App";
 import Patients from "../../components/patients-board/patients";
 import Appointments from "../../components/Appointments/Appointments";
+import Payments from "../../components/Payments/Payments";
 import Menu from "../../components/Menu/Menu";
 
 const Dashboard = () => {
@@ -24,6 +25,10 @@ const Dashboard = () => {
     setCurrentSection('patients');
   };
 
+  const handleNavigateToPayments = () => {
+    setCurrentSection('pagos');
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -33,12 +38,14 @@ const Dashboard = () => {
             <span className="main-title">Dashboard</span>
             {currentSection === 'turnos' && <span className="section-indicator">- Turnos</span>}
             {currentSection === 'patients' && <span className="section-indicator">- Pacientes</span>}
+            {currentSection === 'pagos' && <span className="section-indicator">- Pagos</span>}
           </div>
         </div>
         <Menu 
           onLogout={handleLogout} 
           onNavigateToTurnos={handleNavigateToTurnos}
           onNavigateToPatients={handleNavigateToPatients}
+          onNavigateToPayments={handleNavigateToPayments}
         />
       </header>
       <main className="dashboard-content">
@@ -50,6 +57,11 @@ const Dashboard = () => {
         {currentSection === 'turnos' && (
           <section className="appointments-section">
             <Appointments />
+          </section>
+        )}
+        {currentSection === 'pagos' && (
+          <section className="payments-section">
+            <Payments />
           </section>
         )}
       </main>
