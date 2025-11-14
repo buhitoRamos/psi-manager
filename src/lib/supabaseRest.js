@@ -535,6 +535,117 @@ const supabaseRest = {
       console.error('Error in deletePayment:', err);
       throw err;
     }
+  },
+
+  /**
+   * getPatientDebt calcula la deuda de un paciente específico
+   * Deuda = suma de appointments finalizados/cancelados - suma de contributions.payment
+   */
+  async getPatientDebt(patientId, userId) {
+    try {
+      // Obtener todos los appointments del paciente
+      const appointments = await this.getAppointmentsByPatientId(patientId, userId);
+      // Solo contar turnos finalizados o cancelados (sesiones realizadas)
+      const totalAppointments = appointments.reduce((sum, appointment) => {
+        if (appointment.status === 'finalizado' || appointment.status === 'cancelado') {
+          return sum + (parseFloat(appointment.amount) || 0);
+        }
+        return sum;
+      }, 0);
+
+      // Obtener todos los payments del paciente
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions?patient_id=eq.${patientId}&user_id=eq.${userId}`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const payments = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error getting patient payments:', payments);
+        throw new Error(payments.message || 'Error al obtener los pagos del paciente');
+      }
+
+      const totalPayments = payments.reduce((sum, payment) => {
+        return sum + (parseFloat(payment.payment) || 0);
+      }, 0);
+
+      const debt = totalAppointments - totalPayments;
+      
+      console.debug('[supabaseRest] getPatientDebt result:', {
+        patientId,
+        totalAppointments,
+        totalPayments,
+        debt
+      });
+
+      return {
+        totalAppointments,
+        totalPayments,
+        debt,
+        hasDebt: debt > 0
+      };
+    } catch (err) {
+      console.error('Error in getPatientDebt:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * getPatientsWithDebt obtiene todos los pacientes con información de deuda
+   * Versión optimizada usando función RPC
+   */
+  async getPatientsWithDebt(userId) {
+    try {
+      // Primero intentar usar la función RPC optimizada
+      try {
+        const result = await callRpc('get_patients_with_debt_summary', { user_id_param: userId });
+        console.debug('[supabaseRest] getPatientsWithDebt (RPC) result:', result);
+        
+        return Array.isArray(result) ? result.map(patient => ({
+          ...patient,
+          totalAppointments: parseFloat(patient.total_appointments) || 0,
+          totalPayments: parseFloat(patient.total_payments) || 0,
+          debt: parseFloat(patient.debt) || 0,
+          hasDebt: patient.has_debt || false
+        })) : [];
+      } catch (rpcError) {
+        console.warn('[supabaseRest] RPC get_patients_with_debt_summary failed, falling back to manual calculation:', rpcError);
+        
+        // Fallback: usar el método manual anterior
+        const patients = await this.getPatientsByUserId(userId);
+        
+        // Calcular deuda para cada paciente
+        const patientsWithDebt = await Promise.all(
+          patients.map(async (patient) => {
+            try {
+              const debtInfo = await this.getPatientDebt(patient.id, userId);
+              return {
+                ...patient,
+                ...debtInfo
+              };
+            } catch (error) {
+              console.error(`Error calculating debt for patient ${patient.id}:`, error);
+              return {
+                ...patient,
+                totalAppointments: 0,
+                totalPayments: 0,
+                debt: 0,
+                hasDebt: false
+              };
+            }
+          })
+        );
+
+        return patientsWithDebt;
+      }
+    } catch (err) {
+      console.error('Error in getPatientsWithDebt:', err);
+      throw err;
+    }
   }
 };
 

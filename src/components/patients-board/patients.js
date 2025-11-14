@@ -19,6 +19,15 @@ function extractUserIdFromToken(token) {
   return null;
 }
 
+// Función para formatear dinero
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0
+  }).format(amount);
+}
+
 function Patients() {
   const { isAuthenticated, token } = useContext(AuthContext);
   const [patients, setPatients] = useState([]);
@@ -73,10 +82,10 @@ function Patients() {
 
         setUserId(extractedUserId);
         
-        // Consultar la API REST de Supabase para obtener pacientes
-        const patientsData = await getPatientsByUserId(extractedUserId);
+        // Consultar la API REST de Supabase para obtener pacientes con información de deuda
+        const patientsData = await supabaseRest.getPatientsWithDebt(extractedUserId);
         // eslint-disable-next-line no-console
-        console.debug('[Patients] getPatientsByUserId result:', patientsData);
+        console.debug('[Patients] getPatientsWithDebt result:', patientsData);
         
         setPatients(patientsData || []);
 
@@ -264,6 +273,10 @@ function Patients() {
       await supabaseRest.createAppointment(appointmentWithUserId);
       
       toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+      
+      // Recargar pacientes con información de deuda actualizada
+      const updatedPatients = await supabaseRest.getPatientsWithDebt(userId);
+      setPatients(updatedPatients || []);
       
       // Cerrar el formulario
       handleCloseAppointment();
@@ -561,6 +574,36 @@ function Patients() {
                           📅
                         </button>
                       </div>
+                      
+                      {/* Indicador de deuda */}
+                      {patient.hasDebt && patient.debt > 0 && (
+                        <div className="patient-debt-alert">
+                          <span className="debt-icon">⚠️</span>
+                          <span className="debt-text">
+                            Debe: {formatCurrency(patient.debt)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Mostrar resumen financiero cuando está expandido */}
+                      {expandedPatient === patient.id && (
+                        <div className="patient-financial-summary">
+                          <div className="financial-item">
+                            <span className="financial-label">Total sesiones:</span>
+                            <span className="financial-amount">{formatCurrency(patient.totalAppointments || 0)}</span>
+                          </div>
+                          <div className="financial-item">
+                            <span className="financial-label">Total pagado:</span>
+                            <span className="financial-amount">{formatCurrency(patient.totalPayments || 0)}</span>
+                          </div>
+                          <div className="financial-item financial-debt">
+                            <span className="financial-label">Saldo:</span>
+                            <span className={`financial-amount ${patient.debt > 0 ? 'debt' : patient.debt < 0 ? 'credit' : 'neutral'}`}>
+                              {formatCurrency(patient.debt || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       {patient.tel && <p className="patient-phone">� {patient.tel}</p>}
                       {expandedPatient === patient.id && (
                         <div className="patient-details">
