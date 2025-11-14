@@ -68,3 +68,45 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Sistema de Gestión de Pacientes PSI
+
+Este proyecto incluye un sistema completo de gestión de pacientes para profesionales de la psicología, con autenticación, CRUD de pacientes, sistema de citas, pagos y seguimiento de deudas.
+
+### Características principales:
+- ✅ Autenticación de usuarios
+- ✅ Gestión completa de pacientes (CRUD)
+- ✅ Sistema de citas/turnos con estados
+- ✅ Gestión de pagos y contribuciones
+- ✅ Cálculo automático de deudas
+- ✅ Visualización de próxima cita por paciente
+- ✅ Diseño responsive y móvil-friendly
+
+### Scripts SQL de Supabase
+
+Para optimizar las consultas de la base de datos, se incluyen varios scripts SQL que deben ejecutarse en la consola SQL de Supabase:
+
+#### 1. Configuración de Autenticación
+- `src/sql/auth_check_secure.sql`: Función principal de autenticación segura
+- `src/sql/auth_check_dev.sql`: Función para desarrollo (menos segura)
+- `src/sql/auth_check.sql`: Función básica de verificación de autenticación
+
+#### 2. Consultas de Pacientes Optimizadas
+- `src/sql/get_patients_with_debt_summary.sql`: RPC para obtener pacientes con resumen de deuda
+- `src/sql/patients_with_next_appointment.sql`: **RPC optimizada** que incluye deuda y próxima cita en una sola consulta
+
+**¡IMPORTANTE!** Para obtener el mejor rendimiento, ejecuta el script `patients_with_next_appointment.sql` en la consola SQL de Supabase. Este script crea una función RPC optimizada que reduce significativamente el número de consultas necesarias para mostrar la información completa de pacientes.
+
+### Estructura del Proyecto
+```
+src/
+├── components/         # Componentes reutilizables
+├── pages/             # Páginas principales
+├── lib/               # Configuraciones y utilidades
+├── sql/               # Scripts SQL para Supabase
+├── styles/            # Estilos CSS
+└── utils/             # Funciones auxiliares
+```
+
+### Despliegue
+El frontend está optimizado para desplegarse en Vercel de manera gratuita. Simplemente conecta tu repositorio de GitHub a Vercel y el despliegue será automático.

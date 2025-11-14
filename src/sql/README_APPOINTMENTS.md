@@ -65,7 +65,7 @@ Una vez ejecutado exitosamente, la aplicación podrá:
 1. Crear nuevas citas desde el formulario
 2. Guardar observaciones e informes psicológicos
 3. Gestionar estados de las citas
-4. Calcular montos y frecuencias
+4. Calcular honorarioss y frecuencias
 
 ### Troubleshooting
 Si encuentras errores:

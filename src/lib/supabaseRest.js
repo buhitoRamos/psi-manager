@@ -646,6 +646,109 @@ const supabaseRest = {
       console.error('Error in getPatientsWithDebt:', err);
       throw err;
     }
+  },
+
+  /**
+   * getNextAppointmentForPatient obtiene la próxima cita pendiente de un paciente
+   */
+  async getNextAppointmentForPatient(patientId, userId) {
+    try {
+      const appointments = await this.getAppointmentsByPatientId(patientId, userId);
+      
+      // Filtrar solo turnos en estado "en_espera" y ordenar por fecha
+      const futureAppointments = appointments
+        .filter(appointment => appointment.status === 'en_espera')
+        .filter(appointment => new Date(appointment.date) >= new Date()) // Solo fechas futuras o de hoy
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      return futureAppointments.length > 0 ? futureAppointments[0] : null;
+    } catch (err) {
+      console.error('Error in getNextAppointmentForPatient:', err);
+      return null;
+    }
+  },
+
+  /**
+   * getPatientsWithDebtAndNextAppointmentOptimized obtiene pacientes con deuda y próxima cita usando RPC optimizada
+   */
+  async getPatientsWithDebtAndNextAppointmentOptimized(userId) {
+    try {
+      // Intentar usar la función RPC optimizada primero
+      const result = await callRpc('get_patients_with_debt_and_next_appointment', { user_id_param: userId });
+      console.debug('[supabaseRest] getPatientsWithDebtAndNextAppointmentOptimized (RPC) result:', result);
+      
+      return Array.isArray(result) ? result.map(patient => ({
+        ...patient,
+        totalAppointments: parseFloat(patient.total_appointments) || 0,
+        totalPayments: parseFloat(patient.total_payments) || 0,
+        debt: parseFloat(patient.debt) || 0,
+        hasDebt: patient.has_debt || false,
+        nextAppointment: patient.next_appointment_id ? {
+          id: patient.next_appointment_id,
+          date: patient.next_appointment_date,
+          status: patient.next_appointment_status,
+          amount: patient.next_appointment_amount
+        } : null
+      })) : [];
+    } catch (err) {
+      console.error('Error in getPatientsWithDebtAndNextAppointmentOptimized:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * getPatientsWithNextAppointmentManual obtiene pacientes usando múltiples consultas (método manual)
+   */
+  async getPatientsWithNextAppointmentManual(userId) {
+    try {
+      // Primero obtener pacientes con deuda
+      const patientsWithDebt = await this.getPatientsWithDebt(userId);
+      
+      // Agregar información de próxima cita para cada paciente
+      const patientsWithNextAppointment = await Promise.all(
+        patientsWithDebt.map(async (patient) => {
+          try {
+            const nextAppointment = await this.getNextAppointmentForPatient(patient.id, userId);
+            return {
+              ...patient,
+              nextAppointment: nextAppointment
+            };
+          } catch (error) {
+            console.error(`Error getting next appointment for patient ${patient.id}:`, error);
+            return {
+              ...patient,
+              nextAppointment: null
+            };
+          }
+        })
+      );
+
+      console.debug('[supabaseRest] getPatientsWithNextAppointmentManual result:', patientsWithNextAppointment);
+      return patientsWithNextAppointment;
+    } catch (err) {
+      console.error('Error in getPatientsWithNextAppointmentManual:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * getPatientsWithNextAppointment obtiene todos los pacientes con información de deuda y próxima cita
+   */
+  async getPatientsWithNextAppointment(userId) {
+    try {
+      // Intentar usar la función RPC optimizada primero
+      try {
+        return await this.getPatientsWithDebtAndNextAppointmentOptimized(userId);
+      } catch (rpcError) {
+        console.warn('[supabaseRest] RPC get_patients_with_debt_and_next_appointment failed, falling back to manual method:', rpcError);
+        
+        // Fallback: usar el método manual con consultas separadas
+        return await this.getPatientsWithNextAppointmentManual(userId);
+      }
+    } catch (err) {
+      console.error('Error in getPatientsWithNextAppointment:', err);
+      throw err;
+    }
   }
 };
 

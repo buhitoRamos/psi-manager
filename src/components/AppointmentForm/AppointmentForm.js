@@ -51,7 +51,7 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
     e.preventDefault();
     
     if (!formData.date || !formData.amount) {
-      alert('Por favor complete los campos obligatorios (fecha y monto)');
+      alert('Por favor complete los campos obligatorios (fecha y honorarios)');
       return;
     }
 
@@ -134,7 +134,7 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
             </div>
 
             <div className="form-field">
-              <label htmlFor="amount">Monto *</label>
+              <label htmlFor="amount">honorarios *</label>
               <input
                 type="number"
                 id="amount"
