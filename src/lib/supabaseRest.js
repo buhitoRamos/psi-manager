@@ -282,15 +282,21 @@ const supabaseRest = {
 
   /**
    * deletePatient elimina un paciente por su ID.
-   * Requiere que las políticas RLS permitan delete con el anon key para la tabla patients.
+   * Usa el token de autenticación del usuario para las políticas RLS.
    */
   async deletePatient(patientId, userId) {
     try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+
       const response = await fetch(`${SUPABASE_URL}/rest/v1/patients?id=eq.${patientId}&user_id=eq.${userId}`, {
         method: 'DELETE',
         headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -331,6 +337,33 @@ const supabaseRest = {
       
     } catch (err) {
       console.error('[supabaseRest] createAppointment failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
+   * createRecurringAppointments crea turnos recurrentes usando RPC optimizada
+   */
+  async createRecurringAppointments(appointmentData) {
+    try {
+      // Usar la función RPC create_recurring_appointments
+      const result = await callRpc('create_recurring_appointments', {
+        patient_id_param: appointmentData.patient_id,
+        user_id_param: appointmentData.user_id,
+        start_date_param: appointmentData.date,
+        frequency_param: appointmentData.frequency,
+        status_param: appointmentData.status || 'en_espera',
+        amount_param: appointmentData.amount || 0,
+        observation_param: appointmentData.observation || null
+      });
+
+      console.debug('[supabaseRest] createRecurringAppointments result:', result);
+      
+      // El RPC devuelve un array de todas las citas creadas
+      return Array.isArray(result) ? result : [result];
+      
+    } catch (err) {
+      console.error('[supabaseRest] createRecurringAppointments failed:', err.message || err);
       throw err;
     }
   },
@@ -396,6 +429,50 @@ const supabaseRest = {
   },
 
   /**
+   * deleteRecurringAppointments elimina turnos recurrentes futuros
+   */
+  async deleteRecurringAppointments(patientId, userId, startDate, frequency) {
+    try {
+      const result = await callRpc('delete_recurring_appointments', {
+        patient_id_param: patientId,
+        user_id_param: userId,
+        start_date_param: startDate,
+        frequency_param: frequency
+      });
+
+      console.debug('[supabaseRest] deleteRecurringAppointments result:', result);
+      
+      return Array.isArray(result) ? result[0] : result;
+      
+    } catch (err) {
+      console.error('[supabaseRest] deleteRecurringAppointments failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
+   * deleteAppointmentsByDateRange elimina turnos en un rango de fechas
+   */
+  async deleteAppointmentsByDateRange(patientId, userId, startDate, endDate) {
+    try {
+      const result = await callRpc('delete_appointments_by_date_range', {
+        patient_id_param: patientId,
+        user_id_param: userId,
+        start_date_param: startDate,
+        end_date_param: endDate
+      });
+
+      console.debug('[supabaseRest] deleteAppointmentsByDateRange result:', result);
+      
+      return Array.isArray(result) ? result[0] : result;
+      
+    } catch (err) {
+      console.error('[supabaseRest] deleteAppointmentsByDateRange failed:', err.message || err);
+      throw err;
+    }
+  },
+
+  /**
    * deleteAppointment elimina una cita por su ID usando RPC
    */
   async deleteAppointment(appointmentId, userId) {
@@ -411,6 +488,46 @@ const supabaseRest = {
       return result;
     } catch (err) {
       console.error('Error in deleteAppointment:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * deletePendingAppointmentsByPatient elimina todos los turnos pendientes de un paciente
+   */
+  async deletePendingAppointmentsByPatient(patientId, userId) {
+    try {
+      const endpoint = `${SUPABASE_URL}/rest/v1/appointments`;
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+
+      // Eliminar todos los turnos en estado 'en_espera' del paciente
+      const response = await fetch(`${endpoint}?patient_id=eq.${patientId}&user_id=eq.${userId}&status=eq.en_espera`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Prefer': 'return=representation'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const deletedAppointments = await response.json();
+      console.debug('[supabaseRest] deletePendingAppointmentsByPatient result:', deletedAppointments);
+      
+      return {
+        deletedCount: deletedAppointments.length,
+        deletedAppointments
+      };
+    } catch (err) {
+      console.error('Error in deletePendingAppointmentsByPatient:', err);
       throw err;
     }
   },

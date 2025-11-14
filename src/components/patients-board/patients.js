@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
-import supabaseRest, { getPatientsByUserId } from '../../lib/supabaseRest';
+import supabaseRest from '../../lib/supabaseRest';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import './patients.css';
@@ -17,6 +17,15 @@ function extractUserIdFromToken(token) {
     return isNaN(userId) ? null : userId;
   }
   return null;
+}
+
+// Función para normalizar texto removiendo acentos/tildes
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Descompone los caracteres con acentos
+    .replace(/[\u0300-\u036f]/g, '') // Remueve las marcas diacríticas (acentos)
+    .trim();
 }
 
 // Función para formatear dinero
@@ -253,6 +262,15 @@ function Patients() {
     setConfirmModal({ isOpen: false, patient: null });
 
     const deletePromise = async () => {
+      // Primero eliminar todos los turnos pendientes del paciente
+      try {
+        await supabaseRest.deletePendingAppointmentsByPatient(patient.id, userId);
+      } catch (appointmentError) {
+        console.warn('Warning: Could not delete appointments:', appointmentError);
+        // Continuar con la eliminación del paciente aunque fallen los turnos
+      }
+      
+      // Luego eliminar el paciente
       await supabaseRest.deletePatient(patient.id, userId);
       setPatients(patients.filter(p => p.id !== patient.id));
       return patient;
@@ -261,8 +279,8 @@ function Patients() {
     toast.promise(
       deletePromise(),
       {
-        loading: 'Eliminando paciente...',
-        success: (data) => `🗑️ ${data.name || 'Paciente'} eliminado correctamente`,
+        loading: 'Eliminando paciente y turnos pendientes...',
+        success: (data) => `🗑️ ${data.name || 'Paciente'} y turnos eliminados correctamente`,
         error: (err) => `❌ Error al eliminar: ${err.message}`,
       },
       {
@@ -291,7 +309,7 @@ function Patients() {
     });
   };
 
-  const handleSaveAppointment = async (appointmentData) => {
+  const handleSaveAppointment = async (appointmentData, isRecurring = false) => {
     try {
       const userId = extractUserIdFromToken(token);
       if (!userId) {
@@ -307,10 +325,18 @@ function Patients() {
 
       console.log('Saving appointment:', appointmentWithUserId);
       
-      // Llamar al servicio para crear la cita
-      await supabaseRest.createAppointment(appointmentWithUserId);
+      let result;
       
-      toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+      // Si es recurrente y no es única, usar la función de turnos recurrentes
+      if (isRecurring && appointmentData.frequency !== 'unica') {
+        console.log('Creating recurring appointments...');
+        result = await supabaseRest.createRecurringAppointments(appointmentWithUserId);
+        toast.success(`📅 ${result.length || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`);
+      } else {
+        // Llamar al servicio para crear una sola cita
+        result = await supabaseRest.createAppointment(appointmentWithUserId);
+        toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+      }
       
       // Recargar pacientes con información de deuda y próxima cita actualizada
       const updatedPatients = await supabaseRest.getPatientsWithNextAppointment(userId);
@@ -318,6 +344,8 @@ function Patients() {
       
       // Cerrar el formulario
       handleCloseAppointment();
+      
+      return result;
     } catch (error) {
       console.error('Error saving appointment:', error);
       toast.error('Error al guardar el turno');
@@ -325,20 +353,27 @@ function Patients() {
     }
   };
 
-  // Filtrar pacientes por nombre o apellido
+  // Filtrar pacientes por nombre o apellido (ignorando acentos)
   const filteredPatients = patients.filter(patient => {
     if (!searchTerm) return true;
     
-    const searchLower = searchTerm.toLowerCase();
-    const name = (patient.name || '').toLowerCase();
-    const lastName = (patient.last_name || '').toLowerCase();
-    const fullName = `${name} ${lastName}`.trim();
-    const health_insurance = (patient.health_insurance || '').toLowerCase();
+    // Normalizar término de búsqueda (sin acentos)
+    const searchNormalized = normalizeText(searchTerm);
     
-    return name.includes(searchLower) || 
-           lastName.includes(searchLower) || 
-           fullName.includes(searchLower) ||
-           health_insurance.includes(searchLower);
+    // Normalizar campos del paciente (sin acentos)
+    const name = normalizeText(patient.name || '');
+    const lastName = normalizeText(patient.last_name || '');
+    const fullName = normalizeText(`${patient.name || ''} ${patient.last_name || ''}`.trim());
+    const health_insurance = normalizeText(patient.health_insurance || '');
+    const tel = normalizeText(patient.tel || '');
+    const email = normalizeText(patient.email || '');
+    
+    return name.includes(searchNormalized) || 
+           lastName.includes(searchNormalized) || 
+           fullName.includes(searchNormalized) ||
+           health_insurance.includes(searchNormalized) ||
+           tel.includes(searchNormalized) ||
+           email.includes(searchNormalized);
   });
 
   if (!isAuthenticated) {
@@ -388,7 +423,7 @@ function Patients() {
         <div className="patients-search">
           <input
             type="text"
-            placeholder="Buscar por nombre o apellido..."
+            placeholder="Buscar paciente (nombre, apellido, obra social, teléfono, email)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="patients-search-input"

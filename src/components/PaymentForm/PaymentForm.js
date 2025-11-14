@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import './PaymentForm.css';
 
 function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null }) {
@@ -42,13 +43,19 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
     e.preventDefault();
     
     if (!formData.patient_id || !formData.payment) {
-      alert('Por favor complete los campos obligatorios (paciente y honorarios)');
+      toast.error('Por favor complete los campos obligatorios (paciente y honorarios)', {
+        duration: 3000,
+        icon: '⚠️'
+      });
       return;
     }
 
     const paymentAmount = parseFloat(formData.payment);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      alert('Por favor ingrese un honorarios válido');
+      toast.error('Por favor ingrese un honorarios válido', {
+        duration: 3000,
+        icon: '💰'
+      });
       return;
     }
 
@@ -65,7 +72,10 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
       onClose();
     } catch (error) {
       console.error('Error saving payment:', error);
-      alert('Error al guardar el pago');
+      toast.error(`Error al guardar el pago: ${error.message || 'Error desconocido'}`, {
+        duration: 4000,
+        icon: '❌'
+      });
     } finally {
       setLoading(false);
     }

@@ -77,10 +77,13 @@ Este proyecto incluye un sistema completo de gestión de pacientes para profesio
 - ✅ Autenticación de usuarios
 - ✅ Gestión completa de pacientes (CRUD)
 - ✅ Sistema de citas/turnos con estados
+- ✅ **Turnos recurrentes automáticos** (semanal, quincenal, mensual por 1 año)
+- ✅ **Búsqueda inteligente que ignora acentos/tildes** en todos los módulos
 - ✅ Gestión de pagos y contribuciones
 - ✅ Cálculo automático de deudas
 - ✅ Visualización de próxima cita por paciente
 - ✅ Diseño responsive y móvil-friendly
+- ✅ Consultas optimizadas con RPC de Supabase
 
 ### Scripts SQL de Supabase
 
@@ -95,7 +98,12 @@ Para optimizar las consultas de la base de datos, se incluyen varios scripts SQL
 - `src/sql/get_patients_with_debt_summary.sql`: RPC para obtener pacientes con resumen de deuda
 - `src/sql/patients_with_next_appointment.sql`: **RPC optimizada** que incluye deuda y próxima cita en una sola consulta
 
-**¡IMPORTANTE!** Para obtener el mejor rendimiento, ejecuta el script `patients_with_next_appointment.sql` en la consola SQL de Supabase. Este script crea una función RPC optimizada que reduce significativamente el número de consultas necesarias para mostrar la información completa de pacientes.
+#### 3. Gestión de Turnos Recurrentes
+- `src/sql/create_recurring_appointments.sql`: **RPC optimizada** para crear turnos recurrentes (semanal, quincenal, mensual) en una sola operación
+
+**¡IMPORTANTE!** Para obtener el mejor rendimiento, ejecuta todos los scripts SQL en la consola SQL de Supabase:
+1. `patients_with_next_appointment.sql` - Reduce el número de consultas para mostrar información completa de pacientes
+2. `create_recurring_appointments.sql` - Permite crear hasta 52 turnos recurrentes en una sola operación del backend
 
 ### Estructura del Proyecto
 ```
@@ -110,3 +118,5 @@ src/
 
 ### Despliegue
 El frontend está optimizado para desplegarse en Vercel de manera gratuita. Simplemente conecta tu repositorio de GitHub a Vercel y el despliegue será automático.
+
+### -- POWERED BY BUH!TO --
