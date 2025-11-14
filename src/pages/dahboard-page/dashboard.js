@@ -27,12 +27,14 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1 onClick={handleNavigateToPatients} style={{ cursor: 'pointer' }}>
+        <div className="dashboard-title" onClick={handleNavigateToPatients} style={{ cursor: 'pointer' }}>
           <img src="/logo.svg" alt="Psi" className="dashboard-logo" />
-          Dashboard
-          {currentSection === 'turnos' && <span className="section-indicator"> - Turnos</span>}
-          {currentSection === 'patients' && <span className="section-indicator"> - Pacientes</span>}
-        </h1>
+          <div className="title-content">
+            <span className="main-title">Dashboard</span>
+            {currentSection === 'turnos' && <span className="section-indicator">- Turnos</span>}
+            {currentSection === 'patients' && <span className="section-indicator">- Pacientes</span>}
+          </div>
+        </div>
         <Menu 
           onLogout={handleLogout} 
           onNavigateToTurnos={handleNavigateToTurnos}
