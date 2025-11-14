@@ -56,6 +56,10 @@
   padding-right: 30px;
 }
 
+.payments-section {
+  width: 100%;
+}
+
 .dashboard-logo {
   width: 32px;
   height: 32px;

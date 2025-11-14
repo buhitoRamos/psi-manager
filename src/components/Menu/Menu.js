@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
@@ -30,6 +30,14 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients }) {
     setIsOpen(false);
     if (onNavigateToPatients) {
       onNavigateToPatients();
+    }
+  };
+
+  const handlePayments = () => {
+    console.log('Pagos clicked'); // Debug log
+    setIsOpen(false);
+    if (onNavigateToPayments) {
+      onNavigateToPayments();
     }
   };
 
@@ -62,6 +70,10 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients }) {
           <button className="menu-item" onClick={handleTurnos}>
             <span className="menu-icon">📅</span>
             Turnos
+          </button>
+          <button className="menu-item" onClick={handlePayments}>
+            <span className="menu-icon">💰</span>
+            Pagos
           </button>
           <button className="menu-item logout" onClick={handleLogout}>
             <span className="menu-icon">🚪</span>
