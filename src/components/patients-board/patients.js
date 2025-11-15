@@ -103,7 +103,8 @@ function Patients() {
   const [recurringConfirmModal, setRecurringConfirmModal] = useState({
     isOpen: false,
     appointmentData: null,
-    appointmentWithUserId: null
+    appointmentWithUserId: null,
+    patientName: null
   });
   const [appointmentForm, setAppointmentForm] = useState({
     isOpen: false,
@@ -303,35 +304,58 @@ function Patients() {
   };
 
   const handleRecurringConfirmation = (appointmentData, appointmentWithUserId) => {
+    // Calcular el nombre del paciente una sola vez aquí
+    let patientName = 'el paciente';
+    if (appointmentForm?.patient) {
+      const firstName = appointmentForm.patient.name || '';
+      const lastName = appointmentForm.patient.last_name || '';
+      patientName = `${firstName} ${lastName}`.trim() || 'el paciente';
+    }
+
     setRecurringConfirmModal({
       isOpen: true,
       appointmentData,
-      appointmentWithUserId
+      appointmentWithUserId,
+      patientName // Agregar el nombre calculado al estado
     });
   };
 
   const confirmRecurringAppointments = async (shouldClearExisting) => {
-    const { appointmentData, appointmentWithUserId } = recurringConfirmModal;
-    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null });
+    const { appointmentData, appointmentWithUserId, patientName } = recurringConfirmModal;
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null });
 
     try {
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
       
-      let message = `📅 ${result.createdCount || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`;
-      if (result.deletedCount > 0) {
-        message += ` (${result.deletedCount} turnos anteriores reemplazados)`;
+      // Validar que result existe y tiene las propiedades esperadas
+      if (!result) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      const createdCount = result.createdCount || 0;
+      const deletedCount = result.deletedCount || 0;
+      const frequency = appointmentData?.frequency || 'recurrentes';
+      
+      // Usar el nombre del paciente ya calculado
+      const finalPatientName = patientName || 'el paciente';
+
+      let message = `📅 ${createdCount} turnos ${frequency}es programados para ${finalPatientName}`;
+      if (deletedCount > 0) {
+        message += ` (${deletedCount} turnos anteriores reemplazados)`;
       }
       toast.success(message);
 
       // Trigger appointments list refresh in other components
-      onRecurringAppointmentsCreated({
-        patientId: appointmentForm.patient.id,
-        patientName: appointmentForm.patient.name,
-        frequency: appointmentData.frequency,
-        createdCount: result.createdCount,
-        deletedCount: result.deletedCount,
-        shouldClearExisting
-      });
+      if (onRecurringAppointmentsCreated && appointmentForm?.patient?.id) {
+        onRecurringAppointmentsCreated({
+          patientId: appointmentForm.patient.id,
+          patientName: finalPatientName,
+          frequency: frequency,
+          createdCount: createdCount,
+          deletedCount: deletedCount,
+          shouldClearExisting
+        });
+      }
 
       // Trigger appointments list refresh in other components
       if (triggerUpdate) {
@@ -340,12 +364,13 @@ function Patients() {
 
     } catch (error) {
       console.error('Error creating recurring appointments:', error);
-      toast.error(`❌ Error al programar turnos: ${error.message}`);
+      const errorMessage = error?.message || 'Error desconocido';
+      toast.error(`❌ Error al programar turnos: ${errorMessage}`);
     }
   };
 
   const cancelRecurringConfirmation = () => {
-    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null });
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null });
   };
 
   const handleOpenAppointment = (patient) => {
@@ -826,7 +851,7 @@ function Patients() {
           <div className="appointment-confirm-modal">
             <h3>Turnos Recurrentes</h3>
             <p>
-              ¿Desea reemplazar los turnos {recurringConfirmModal.appointmentData?.frequency}es existentes pendientes de {appointmentForm.patient?.name}?
+              ¿Desea reemplazar los turnos {recurringConfirmModal.appointmentData?.frequency || 'recurrentes'}es existentes pendientes de {recurringConfirmModal.patientName || 'el paciente'}?
             </p>
             <div className="confirmation-details">
               <div className="option">

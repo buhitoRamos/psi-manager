@@ -355,10 +355,13 @@ const supabaseRest = {
       console.debug('[supabaseRest] createRecurringAppointments result:', result);
       
       // El RPC devuelve un array de todas las citas creadas
-      const appointments = Array.isArray(result) ? result : [result];
+      const appointments = Array.isArray(result) ? result : (result ? [result] : []);
       
-      // Agregar información sobre turnos eliminados si existía clear_existing
-      const deletedCount = appointments.length > 0 ? appointments[0].deleted_count || 0 : 0;
+      // Verificar si hay información sobre turnos eliminados
+      let deletedCount = 0;
+      if (appointments.length > 0 && appointments[0] && typeof appointments[0] === 'object') {
+        deletedCount = appointments[0].deleted_count || 0;
+      }
       
       return {
         appointments,
@@ -800,52 +803,36 @@ const supabaseRest = {
 
   /**
    * getPatientsWithDebt obtiene todos los pacientes con información de deuda
-   * Versión optimizada usando función RPC
+   * Usa método manual con consultas separadas
    */
   async getPatientsWithDebt(userId) {
     try {
-      // Primero intentar usar la función RPC optimizada
-      try {
-        const result = await callRpc('get_patients_with_debt_summary', { user_id_param: userId });
-        console.debug('[supabaseRest] getPatientsWithDebt (RPC) result:', result);
-        
-        return Array.isArray(result) ? result.map(patient => ({
-          ...patient,
-          totalAppointments: parseFloat(patient.total_appointments) || 0,
-          totalPayments: parseFloat(patient.total_payments) || 0,
-          debt: parseFloat(patient.debt) || 0,
-          hasDebt: patient.has_debt || false
-        })) : [];
-      } catch (rpcError) {
-        console.warn('[supabaseRest] RPC get_patients_with_debt_summary failed, falling back to manual calculation:', rpcError);
-        
-        // Fallback: usar el método manual anterior
-        const patients = await this.getPatientsByUserId(userId);
-        
-        // Calcular deuda para cada paciente
-        const patientsWithDebt = await Promise.all(
-          patients.map(async (patient) => {
-            try {
-              const debtInfo = await this.getPatientDebt(patient.id, userId);
-              return {
-                ...patient,
-                ...debtInfo
-              };
-            } catch (error) {
-              console.error(`Error calculating debt for patient ${patient.id}:`, error);
-              return {
-                ...patient,
-                totalAppointments: 0,
-                totalPayments: 0,
-                debt: 0,
-                hasDebt: false
-              };
-            }
-          })
-        );
+      // Obtener todos los pacientes
+      const patients = await this.getPatientsByUserId(userId);
+      
+      // Calcular deuda para cada paciente
+      const patientsWithDebt = await Promise.all(
+        patients.map(async (patient) => {
+          try {
+            const debtInfo = await this.getPatientDebt(patient.id, userId);
+            return {
+              ...patient,
+              ...debtInfo
+            };
+          } catch (error) {
+            console.error(`Error calculating debt for patient ${patient.id}:`, error);
+            return {
+              ...patient,
+              totalAppointments: 0,
+              totalPayments: 0,
+              debt: 0,
+              hasDebt: false
+            };
+          }
+        })
+      );
 
-        return patientsWithDebt;
-      }
+      return patientsWithDebt;
     } catch (err) {
       console.error('Error in getPatientsWithDebt:', err);
       throw err;
@@ -869,34 +856,6 @@ const supabaseRest = {
     } catch (err) {
       console.error('Error in getNextAppointmentForPatient:', err);
       return null;
-    }
-  },
-
-  /**
-   * getPatientsWithDebtAndNextAppointmentOptimized obtiene pacientes con deuda y próxima cita usando RPC optimizada
-   */
-  async getPatientsWithDebtAndNextAppointmentOptimized(userId) {
-    try {
-      // Intentar usar la función RPC optimizada primero
-      const result = await callRpc('get_patients_with_debt_and_next_appointment', { user_id_param: userId });
-      console.debug('[supabaseRest] getPatientsWithDebtAndNextAppointmentOptimized (RPC) result:', result);
-      
-      return Array.isArray(result) ? result.map(patient => ({
-        ...patient,
-        totalAppointments: parseFloat(patient.total_appointments) || 0,
-        totalPayments: parseFloat(patient.total_payments) || 0,
-        debt: parseFloat(patient.debt) || 0,
-        hasDebt: patient.has_debt || false,
-        nextAppointment: patient.next_appointment_id ? {
-          id: patient.next_appointment_id,
-          date: patient.next_appointment_date,
-          status: patient.next_appointment_status,
-          amount: patient.next_appointment_amount
-        } : null
-      })) : [];
-    } catch (err) {
-      console.error('Error in getPatientsWithDebtAndNextAppointmentOptimized:', err);
-      throw err;
     }
   },
 
@@ -937,18 +896,11 @@ const supabaseRest = {
 
   /**
    * getPatientsWithNextAppointment obtiene todos los pacientes con información de deuda y próxima cita
+   * Usa el método manual con consultas separadas
    */
   async getPatientsWithNextAppointment(userId) {
     try {
-      // Intentar usar la función RPC optimizada primero
-      try {
-        return await this.getPatientsWithDebtAndNextAppointmentOptimized(userId);
-      } catch (rpcError) {
-        console.warn('[supabaseRest] RPC get_patients_with_debt_and_next_appointment failed, falling back to manual method:', rpcError);
-        
-        // Fallback: usar el método manual con consultas separadas
-        return await this.getPatientsWithNextAppointmentManual(userId);
-      }
+      return await this.getPatientsWithNextAppointmentManual(userId);
     } catch (err) {
       console.error('Error in getPatientsWithNextAppointment:', err);
       throw err;
