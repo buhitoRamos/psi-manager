@@ -717,11 +717,11 @@ function Patients() {
                       {expandedPatient === patient.id && (
                         <div className="patient-financial-summary">
                           <div className="financial-item">
-                            <span className="financial-label">Total sesiones:</span>
+                            <span className="financial-label">Total de honorarios:</span>
                             <span className="financial-amount">{formatCurrency(patient.totalAppointments || 0)}</span>
                           </div>
                           <div className="financial-item">
-                            <span className="financial-label">Total pagado:</span>
+                            <span className="financial-label">Honorarios cancelados:</span>
                             <span className="financial-amount">{formatCurrency(patient.totalPayments || 0)}</span>
                           </div>
                           <div className="financial-item financial-debt">
