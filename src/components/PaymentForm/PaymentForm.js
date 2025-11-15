@@ -134,7 +134,7 @@ function PaymentForm({ isOpen, onClose, onSave, patients, existingPayment = null
           {/* honorarios del pago */}
           <div className="form-group">
             <label htmlFor="payment" className="form-label">
-              honorarios del Pago *
+              honorarios adeudados *
             </label>
             <div className="amount-input-wrapper">
               <span className="currency-symbol">$</span>
