@@ -26,7 +26,7 @@
 
 .appointments-controls {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 1rem;
   margin-bottom: 1rem;
   align-items: start;
@@ -92,6 +92,48 @@
 .appointments-filter-select:focus {
   outline: none;
   border-color: #007bff;
+}
+
+.appointments-refresh-btn {
+  padding: 0.6rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.appointments-refresh-btn:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: #f8f9ff;
+  transform: translateY(-1px);
+}
+
+.appointments-refresh-btn:active {
+  transform: translateY(0);
+}
+
+.appointments-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.appointments-refresh-btn:disabled:hover {
+  border-color: #e0e0e0;
+  color: #666;
+  background: white;
+  transform: none;
 }
 
 .appointments-count {
@@ -459,9 +501,15 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
+.bulk-delete-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .appointments-bulk-delete h3 {
   color: #dc2626;
-  margin: 0 0 0.5rem 0;
+  margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
   display: flex;
@@ -469,77 +517,52 @@
   gap: 0.5rem;
 }
 
-.bulk-delete-description {
-  color: #7f1d1d;
-  font-size: 0.9rem;
-  margin: 0 0 1rem 0;
-  line-height: 1.4;
+.bulk-delete-selector {
+  width: 100%;
 }
 
-.bulk-delete-patients {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.bulk-delete-patient-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: white;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
+.bulk-delete-select {
+  width: 100%;
   padding: 0.75rem 1rem;
+  border: 2px solid #fca5a5;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 0.95rem;
+  cursor: pointer;
   transition: all 0.2s ease;
+  outline: none;
 }
 
-.bulk-delete-patient-item:hover {
+.bulk-delete-select:hover {
   border-color: #f87171;
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.1);
 }
 
-.patient-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.bulk-delete-select:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
-.patient-name {
-  font-weight: 600;
+.bulk-delete-select option {
+  padding: 0.5rem;
   color: #374151;
-  font-size: 0.95rem;
 }
 
-.pending-count {
-  font-size: 0.8rem;
-  color: #dc2626;
-  font-weight: 500;
+.bulk-delete-select option:disabled {
+  color: #9ca3af;
+  font-style: italic;
 }
 
-.bulk-delete-btn {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  white-space: nowrap;
-}
-
-.bulk-delete-btn:hover {
-  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
-}
-
-.bulk-delete-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+.bulk-delete-description {
+  color: #7f1d1d;
+  font-size: 0.9rem;
+  margin: 1rem 0 0 0;
+  line-height: 1.4;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  border-left: 4px solid #fbbf24;
 }
 
 /* Responsive design para dispositivos móviles */
@@ -549,20 +572,17 @@
     margin: 1rem 0;
   }
 
-  .bulk-delete-patient-item {
-    flex-direction: column;
-    align-items: flex-start;
+  .bulk-delete-header {
     gap: 0.75rem;
-    padding: 1rem;
   }
 
-  .patient-info {
-    width: 100%;
-  }
-
-  .bulk-delete-btn {
-    width: 100%;
-    justify-content: center;
+  .bulk-delete-select {
+    font-size: 0.9rem;
     padding: 0.75rem;
+  }
+
+  .bulk-delete-description {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
   }
 }

@@ -344,7 +344,7 @@ const supabaseRest = {
   /**
    * createRecurringAppointments crea turnos recurrentes usando RPC optimizada
    */
-  async createRecurringAppointments(appointmentData) {
+  async createRecurringAppointments(appointmentData, clearExisting = false) {
     try {
       // Usar la función RPC create_recurring_appointments
       const result = await callRpc('create_recurring_appointments', {
@@ -354,13 +354,23 @@ const supabaseRest = {
         frequency_param: appointmentData.frequency,
         status_param: appointmentData.status || 'en_espera',
         amount_param: appointmentData.amount || 0,
-        observation_param: appointmentData.observation || null
+        observation_param: appointmentData.observation || null,
+        clear_existing: clearExisting
       });
 
       console.debug('[supabaseRest] createRecurringAppointments result:', result);
       
       // El RPC devuelve un array de todas las citas creadas
-      return Array.isArray(result) ? result : [result];
+      const appointments = Array.isArray(result) ? result : [result];
+      
+      // Agregar información sobre turnos eliminados si existía clear_existing
+      const deletedCount = appointments.length > 0 ? appointments[0].deleted_count || 0 : 0;
+      
+      return {
+        appointments,
+        deletedCount,
+        createdCount: appointments.length
+      };
       
     } catch (err) {
       console.error('[supabaseRest] createRecurringAppointments failed:', err.message || err);
@@ -494,37 +504,56 @@ const supabaseRest = {
 
   /**
    * deletePendingAppointmentsByPatient elimina todos los turnos pendientes de un paciente
+   * Usa la función RPC delete_pending_appointments_by_patient_v2 para trabajar con autenticación personalizada
    */
   async deletePendingAppointmentsByPatient(patientId, userId) {
     try {
-      const endpoint = `${SUPABASE_URL}/rest/v1/appointments`;
       const token = localStorage.getItem('token');
 
       if (!token) {
-        throw new Error('No hay token de autenticación');
+        throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
       }
 
-      // Eliminar todos los turnos en estado 'en_espera' del paciente
-      const response = await fetch(`${endpoint}?patient_id=eq.${patientId}&user_id=eq.${userId}&status=eq.en_espera`, {
-        method: 'DELETE',
+      // Obtener el userId actual si no se proporciona
+      let currentUserId = userId;
+      if (!currentUserId) {
+        // Si no se proporciona userId, intentar obtenerlo del token o localStorage
+        currentUserId = localStorage.getItem('userId');
+        if (!currentUserId) {
+          throw new Error('No se pudo determinar el ID del usuario');
+        }
+      }
+
+      // Usar la función RPC compatible para eliminar turnos pendientes
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_pending_appointments_by_patient_v2`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Prefer': 'return=representation'
-        }
+        },
+        body: JSON.stringify({
+          patient_id_param: parseInt(patientId, 10),
+          user_id_param: parseInt(currentUserId, 10)
+        })
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      const deletedAppointments = await response.json();
-      console.debug('[supabaseRest] deletePendingAppointmentsByPatient result:', deletedAppointments);
+      const result = await response.json();
+      console.debug('[supabaseRest] deletePendingAppointmentsByPatient result:', result);
+      
+      // La función RPC devuelve un array con un objeto que contiene deleted_count y deleted_ids
+      const resultData = Array.isArray(result) ? result[0] : result;
       
       return {
-        deletedCount: deletedAppointments.length,
-        deletedAppointments
+        deletedCount: resultData.deleted_count || 0,
+        deletedIds: resultData.deleted_ids || []
       };
     } catch (err) {
       console.error('Error in deletePendingAppointmentsByPatient:', err);
@@ -537,30 +566,68 @@ const supabaseRest = {
    */
 
   /**
-   * createPayment crea un nuevo pago
+   * createPayment crea un nuevo pago, con soporte para vincular con turnos específicos
    */
   async createPayment(paymentData) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(paymentData)
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        console.error('Error creating payment:', data);
-        throw new Error(data.message || 'Error al crear el pago');
+      // Si incluye appointment_id, usar la nueva función RPC
+      if (paymentData.appointment_id) {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_payment_with_appointment`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id_param: paymentData.patient_id,
+            user_id_param: paymentData.user_id,
+            amount_param: paymentData.amount,
+            payment_method_param: paymentData.payment_method || 'sesion',
+            notes_param: paymentData.notes,
+            appointment_id_param: paymentData.appointment_id
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error('Error creating payment with appointment:', data);
+          throw new Error(data.message || 'Error al crear el pago de sesión');
+        }
+
+        console.debug('[supabaseRest] createPayment with appointment result:', data[0]);
+        return data[0];
+      } else {
+        // Método tradicional para pagos sin vincular a turnos
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            patient_id: paymentData.patient_id,
+            user_id: paymentData.user_id,
+            payment: paymentData.amount,
+            contribution_ob: paymentData.notes,
+            payment_method: paymentData.payment_method || 'efectivo',
+            payment_date: paymentData.payment_date || new Date().toISOString()
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error('Error creating payment:', data);
+          throw new Error(data.message || 'Error al crear el pago');
+        }
+        
+        console.debug('[supabaseRest] createPayment result:', data[0]);
+        return data[0];
       }
-      
-      console.debug('[supabaseRest] createPayment result:', data[0]);
-      return data[0];
     } catch (err) {
       console.error('Error in createPayment:', err);
       throw err;
@@ -568,16 +635,21 @@ const supabaseRest = {
   },
 
   /**
-   * getPaymentsByUserId obtiene todos los pagos de un usuario
+   * getPaymentsByUserId obtiene todos los pagos de un usuario con información de turnos
    */
   async getPaymentsByUserId(userId) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions?user_id=eq.${userId}&order=created_at.desc`, {
+      // Usar la nueva función RPC que incluye información de turnos
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_session_payments_by_user`, {
+        method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id_param: userId
+        })
       });
       
       const data = await response.json();
@@ -586,9 +658,26 @@ const supabaseRest = {
         console.error('Error getting payments:', data);
         throw new Error(data.message || 'Error al obtener los pagos');
       }
+
+      // Mapear los datos para mantener compatibilidad con el formato anterior
+      const mappedData = data.map(payment => ({
+        id: payment.id,
+        created_at: payment.created_at,
+        patient_id: payment.patient_id,
+        user_id: payment.user_id,
+        payment: payment.payment,
+        amount: payment.payment, // Alias para compatibilidad
+        contribution_ob: payment.notes,
+        notes: payment.notes,
+        payment_method: payment.payment_method,
+        appointment_id: payment.appointment_id,
+        patient_name: payment.patient_name,
+        patient_last_name: payment.patient_last_name,
+        appointment_date: payment.appointment_date
+      }));
       
-      console.debug('[supabaseRest] getPaymentsByUserId result:', data);
-      return data;
+      console.debug('[supabaseRest] getPaymentsByUserId result:', mappedData);
+      return mappedData;
     } catch (err) {
       console.error('Error in getPaymentsByUserId:', err);
       throw err;
