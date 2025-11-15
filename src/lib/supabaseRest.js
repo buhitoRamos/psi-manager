@@ -600,6 +600,17 @@ const supabaseRest = {
         return data[0];
       } else {
         // Método tradicional para pagos sin vincular a turnos
+        // Asegurar que todos los campos requeridos estén presentes
+        const normalizedPaymentData = {
+          patient_id: paymentData.patient_id,
+          user_id: paymentData.user_id,
+          payment: paymentData.amount || paymentData.payment, // Compatibilidad con ambos nombres
+          contribution_ob: paymentData.notes || paymentData.contribution_ob || '',
+          payment_method: paymentData.payment_method || 'efectivo',
+          payment_date: paymentData.payment_date || new Date().toISOString(),
+          appointment_id: null // Explícitamente null para pagos tradicionales
+        };
+
         const response = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
           method: 'POST',
           headers: {
@@ -608,14 +619,7 @@ const supabaseRest = {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
-          body: JSON.stringify({
-            patient_id: paymentData.patient_id,
-            user_id: paymentData.user_id,
-            payment: paymentData.amount,
-            contribution_ob: paymentData.notes,
-            payment_method: paymentData.payment_method || 'efectivo',
-            payment_date: paymentData.payment_date || new Date().toISOString()
-          })
+          body: JSON.stringify(normalizedPaymentData)
         });
         
         const data = await response.json();
