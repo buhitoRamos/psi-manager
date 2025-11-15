@@ -153,9 +153,8 @@ function AppointmentForm({
         };
         
         // Procesar el pago si el checkbox está marcado y no estaba pagado antes
-        const shouldProcessPayment = localPaymentChecked && !isPaid && 
-                                   (formData.status === 'finalizado' || formData.status === 'cancelado') &&
-                                   formData.amount > 0;
+        // Si se marca el pago, se asume que el turno está finalizado/cancelado
+        const shouldProcessPayment = localPaymentChecked && !isPaid && formData.amount > 0;
         
         await onSave(appointmentData, shouldProcessPayment);
         onClose();
@@ -398,7 +397,16 @@ function AppointmentForm({
                   <input
                     type="checkbox"
                     checked={localPaymentChecked}
-                    onChange={(e) => setLocalPaymentChecked(e.target.checked)}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setLocalPaymentChecked(isChecked);
+                      
+                      // Si se marca el pago y el turno no está finalizado o cancelado,
+                      // automáticamente cambiar a finalizado
+                      if (isChecked && formData.status !== 'finalizado' && formData.status !== 'cancelado') {
+                        setFormData(prev => ({ ...prev, status: 'finalizado' }));
+                      }
+                    }}
                     disabled={isPaid} // No permitir cambiar si ya está pagado
                     className="payment-checkbox"
                   />

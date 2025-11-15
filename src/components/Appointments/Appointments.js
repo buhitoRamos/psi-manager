@@ -193,10 +193,7 @@ function Appointments() {
 
   // Función para manejar el pago de una sesión
   const handleSessionPayment = async (appointment) => {
-    if (appointment.status !== 'finalizado' && appointment.status !== 'cancelado') {
-      toast.error('Solo se pueden marcar como pagadas las sesiones finalizadas o canceladas');
-      return;
-    }
+
 
     if (!appointment.amount || appointment.amount <= 0) {
       toast.error('No hay un monto válido para registrar el pago');

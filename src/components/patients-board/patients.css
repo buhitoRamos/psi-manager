@@ -854,3 +854,144 @@
         font-size: 0.9rem;
     }
 }
+
+/* Modal de confirmación para turnos recurrentes */
+.appointment-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.appointment-confirm-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    margin: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.appointment-confirm-modal h3 {
+    color: #2c3e50;
+    margin: 0 0 20px 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.appointment-confirm-modal p {
+    color: #34495e;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.confirmation-details {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.confirmation-details .option {
+    margin: 12px 0;
+    padding: 8px 0;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.confirmation-details .option strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.appointment-confirm-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.confirm-replace-btn,
+.confirm-keep-btn,
+.confirm-cancel-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.confirm-replace-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+.confirm-replace-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+}
+
+.confirm-keep-btn {
+    background: #27ae60;
+    color: white;
+}
+
+.confirm-keep-btn:hover {
+    background: #219a52;
+    transform: translateY(-1px);
+}
+
+.confirm-cancel-btn {
+    background: #95a5a6;
+    color: white;
+}
+
+.confirm-cancel-btn:hover {
+    background: #7f8c8d;
+    transform: translateY(-1px);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive para el modal de confirmación */
+@media (max-width: 768px) {
+    .appointment-confirm-modal {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .appointment-confirm-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .confirm-replace-btn,
+    .confirm-keep-btn,
+    .confirm-cancel-btn {
+        width: 100%;
+    }
+}

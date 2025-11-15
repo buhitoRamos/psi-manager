@@ -282,21 +282,15 @@ const supabaseRest = {
 
   /**
    * deletePatient elimina un paciente por su ID.
-   * Usa el token de autenticación del usuario para las políticas RLS.
+   * Usa el ANON_KEY para las políticas RLS.
    */
   async deletePatient(patientId, userId) {
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
       const response = await fetch(`${SUPABASE_URL}/rest/v1/patients?id=eq.${patientId}&user_id=eq.${userId}`, {
         method: 'DELETE',
         headers: {
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json'
         }
       });
