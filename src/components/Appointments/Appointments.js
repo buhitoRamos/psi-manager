@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
+import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
@@ -29,12 +30,15 @@ function normalizeText(text) {
 
 function Appointments() {
   const { isAuthenticated, token } = useContext(AuthContext);
+  const appointmentsUpdate = useAppointmentsUpdate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectKey, setSelectKey] = useState(0); // Para resetear el select
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     appointment: null
@@ -49,6 +53,7 @@ function Appointments() {
     appointment: null,
     patient: null
   });
+  const [paidSessions, setPaidSessions] = useState(new Set()); // IDs de sesiones pagadas
 
   useEffect(() => {
     async function loadAppointments() {
@@ -76,6 +81,20 @@ function Appointments() {
         
         setAppointments(appointmentsData || []);
 
+        // Cargar los pagos para identificar qué sesiones están pagadas
+        try {
+          const payments = await supabaseRest.getPaymentsByUserId(extractedUserId);
+          const paidSessionIds = new Set(
+            payments
+              .filter(payment => payment.appointment_id) // Solo pagos vinculados a turnos
+              .map(payment => payment.appointment_id)
+          );
+          setPaidSessions(paidSessionIds);
+        } catch (paymentError) {
+          console.warn('Error al cargar pagos:', paymentError);
+          // No es crítico si falla la carga de pagos
+        }
+
       } catch (err) {
         console.error('Error loading appointments:', err);
         setError(err.message || 'Error al cargar los turnos');
@@ -87,6 +106,132 @@ function Appointments() {
     loadAppointments();
   }, [isAuthenticated, token]);
 
+  // Función para refrescar los datos manualmente
+  const refreshAppointments = useCallback(async () => {
+    if (!userId) {
+      toast.error('No hay usuario autenticado');
+      return;
+    }
+    
+    // Usar una referencia funcional para evitar dependencias circulares
+    setRefreshing(current => {
+      if (current) return current; // Si ya está refrescando, no hacer nada
+      return true;
+    });
+    
+    const refreshPromise = async () => {
+      try {
+        console.debug('[Appointments] Refrescando datos...');
+        const refreshedAppointments = await supabaseRest.getAppointmentsByUserId(userId);
+        setAppointments(refreshedAppointments || []);
+        
+        // Recargar también los pagos
+        try {
+          const payments = await supabaseRest.getPaymentsByUserId(userId);
+          const paidSessionIds = new Set(
+            payments
+              .filter(payment => payment.appointment_id)
+              .map(payment => payment.appointment_id)
+          );
+          setPaidSessions(paidSessionIds);
+        } catch (paymentError) {
+          console.warn('Error al recargar pagos:', paymentError);
+        }
+        
+        // Resetear el select del desplegable
+        setSelectKey(prev => prev + 1);
+        
+        console.debug('[Appointments] Datos refrescados exitosamente:', refreshedAppointments);
+        
+        // Calcular estadísticas para mostrar en el toast
+        const totalCount = refreshedAppointments ? refreshedAppointments.length : 0;
+        const pendingCount = refreshedAppointments ? refreshedAppointments.filter(apt => apt.status === 'en_espera').length : 0;
+        
+        return { totalCount, pendingCount };
+      } finally {
+        setRefreshing(false);
+      }
+    };
+
+    toast.promise(
+      refreshPromise(),
+      {
+        loading: 'Actualizando datos...',
+        success: (data) => `✅ ${data.totalCount} turnos cargados (${data.pendingCount} pendientes)`,
+        error: (err) => `❌ Error al actualizar: ${err.message}`,
+      },
+      {
+        style: { minWidth: '300px' },
+        success: { duration: 3000, icon: '🔄' },
+        error: { duration: 5000, icon: '💥' },
+      }
+    );
+  }, [userId]); // Solo userId como dependencia
+
+  // useEffect para debug - observar cambios en appointments
+  useEffect(() => {
+    console.debug('[Appointments] Estado appointments actualizado:', {
+      count: appointments.length,
+      pendingCount: appointments.filter(apt => apt.status === 'en_espera').length
+    });
+  }, [appointments]);
+
+  // useEffect para escuchar actualizaciones desde otros componentes
+  useEffect(() => {
+    if (appointmentsUpdate.updateTrigger > 0 && userId) {
+      console.debug('[Appointments] Trigger de actualización recibido desde otro componente:', appointmentsUpdate.updateTrigger);
+      
+      // Usar un timeout para evitar múltiples llamadas simultáneas
+      const timeoutId = setTimeout(() => {
+        refreshAppointments();
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointmentsUpdate.updateTrigger, userId]); // Intencionalmente omitimos refreshAppointments para evitar loops
+
+  // Función para manejar el pago de una sesión
+  const handleSessionPayment = async (appointment) => {
+    if (appointment.status !== 'finalizado' && appointment.status !== 'cancelado') {
+      toast.error('Solo se pueden marcar como pagadas las sesiones finalizadas o canceladas');
+      return;
+    }
+
+    if (!appointment.amount || appointment.amount <= 0) {
+      toast.error('No hay un monto válido para registrar el pago');
+      return;
+    }
+
+    try {
+      // Crear el registro de pago
+      const paymentData = {
+        patient_id: appointment.patient_id,
+        user_id: userId,
+        amount: appointment.amount,
+        payment_date: new Date().toISOString(),
+        payment_method: 'sesion', // Método específico para pagos de sesión
+        notes: `Pago de sesión - ${formatDate(appointment.date)} - ${appointment.patient_name} ${appointment.patient_last_name || ''}`,
+        appointment_id: appointment.id // Relacionar el pago con el turno específico
+      };
+
+      const result = await supabaseRest.createPayment(paymentData);
+      
+      if (result) {
+        toast.success(`💰 Pago de $${appointment.amount.toLocaleString('es-AR')} registrado para ${appointment.patient_name}`);
+        
+        // Actualizar el estado local inmediatamente
+        setPaidSessions(prev => new Set([...prev, appointment.id]));
+        
+        // Refrescar la lista de turnos para mantener todo sincronizado
+        refreshAppointments();
+      }
+    } catch (error) {
+      console.error('Error al registrar el pago:', error);
+      toast.error('Error al registrar el pago de la sesión');
+    }
+  };
+
   // Función para manejar la edición de una cita
   const handleEditAppointment = (appointment) => {
     setEditingAppointment({
@@ -96,7 +241,9 @@ function Appointments() {
         id: appointment.patient_id,
         name: appointment.patient_name,
         last_name: appointment.patient_last_name
-      }
+      },
+      isPaid: paidSessions.has(appointment.id),
+      onPaymentChange: (appointmentId) => handleSessionPayment(appointment)
     });
   };
 
@@ -110,13 +257,18 @@ function Appointments() {
   };
 
   // Función para guardar los cambios de la cita editada
-  const handleSaveEdit = async (appointmentData) => {
+  const handleSaveEdit = async (appointmentData, shouldProcessPayment = false) => {
     try {
       const updatedAppointment = await supabaseRest.updateAppointment(
         editingAppointment.appointment.id,
         appointmentData,
         userId
       );
+
+      // Procesar el pago si fue solicitado
+      if (shouldProcessPayment) {
+        await handleSessionPayment(editingAppointment.appointment);
+      }
 
       // Actualizar la lista de citas
       setAppointments(appointments.map(apt => 
@@ -125,7 +277,8 @@ function Appointments() {
           : apt
       ));
 
-      toast.success(`✅ Turno actualizado para ${editingAppointment.patient.name}`);
+      const paymentMessage = shouldProcessPayment ? ' y pago registrado' : '';
+      toast.success(`✅ Turno actualizado${paymentMessage} para ${editingAppointment.patient.name}`);
       handleCloseEdit();
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -148,9 +301,18 @@ function Appointments() {
     setConfirmModal({ isOpen: false, appointment: null });
 
     const deletePromise = async () => {
-      await supabaseRest.deleteAppointment(appointment.id, userId);
-      setAppointments(appointments.filter(apt => apt.id !== appointment.id));
-      return appointment;
+      try {
+        await supabaseRest.deleteAppointment(appointment.id, userId);
+        
+        // Actualizar estado local inmediatamente
+        const updatedAppointments = appointments.filter(apt => apt.id !== appointment.id);
+        setAppointments(updatedAppointments);
+        
+        return appointment;
+      } catch (error) {
+        console.error('Error al eliminar turno:', error);
+        throw error;
+      }
     };
 
     toast.promise(
@@ -183,14 +345,35 @@ function Appointments() {
     setBulkDeleteModal({ isOpen: false, patientId: null, patientName: '' });
 
     const deletePromise = async () => {
-      const result = await supabaseRest.deletePendingAppointmentsByPatient(patientId, userId);
-      
-      // Actualizar la lista de turnos eliminando los turnos pendientes del paciente
-      setAppointments(appointments.filter(apt => 
-        !(apt.patient_id === patientId && apt.status === 'en_espera')
-      ));
-      
-      return result;
+      try {
+        const result = await supabaseRest.deletePendingAppointmentsByPatient(patientId, userId);
+        
+        // Filtrar los turnos eliminados del estado local inmediatamente
+        const updatedAppointments = appointments.filter(apt => 
+          !(apt.patient_id === parseInt(patientId, 10) && apt.status === 'en_espera')
+        );
+        setAppointments(updatedAppointments);
+        
+        // Resetear el select del desplegable
+        setSelectKey(prev => prev + 1);
+        
+        // También podemos recargar todos los datos para asegurar sincronización
+        setTimeout(async () => {
+          try {
+            const refreshedAppointments = await supabaseRest.getAppointmentsByUserId(userId);
+            console.debug('[Appointments] Datos refrescados después de eliminación:', refreshedAppointments);
+            setAppointments(refreshedAppointments);
+            setSelectKey(prev => prev + 1); // Reset select nuevamente por si acaso
+          } catch (refreshError) {
+            console.warn('Error al refrescar datos:', refreshError);
+          }
+        }, 500); // Pequeño delay para permitir que la DB se actualice
+        
+        return result;
+      } catch (error) {
+        console.error('Error en eliminación masiva:', error);
+        throw error;
+      }
     };
 
     toast.promise(
@@ -252,6 +435,11 @@ function Appointments() {
     const matchesStatus = filterStatus === 'all' || appointment.status === filterStatus;
     
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    // Ordenar por fecha: los próximos turnos primero
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateA - dateB; // Orden ascendente (próximos primero)
   });
 
   // Formatear fecha
@@ -378,32 +566,50 @@ function Appointments() {
               <option value="cancelado">❌ Cancelados</option>
             </select>
           </div>
+          
+          <button
+            onClick={refreshAppointments}
+            className="appointments-refresh-btn"
+            title="Refrescar datos"
+            disabled={refreshing}
+          >
+            {refreshing ? '🔄' : '🔄'} {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
         </div>
 
         {/* Sección de eliminación masiva de turnos pendientes */}
         {getPatientsWithPendingAppointments().length > 0 && (
           <div className="appointments-bulk-delete">
-            <h3>🗑️ Eliminar Turnos Pendientes por Paciente</h3>
-            <p className="bulk-delete-description">
-              Elimina todos los turnos en espera de un paciente específico (no afecta turnos finalizados o cancelados)
-            </p>
-            <div className="bulk-delete-patients">
-              {getPatientsWithPendingAppointments().map(patient => (
-                <div key={patient.id} className="bulk-delete-patient-item">
-                  <div className="patient-info">
-                    <span className="patient-name">{patient.name}</span>
-                    <span className="pending-count">{patient.pendingCount} turno{patient.pendingCount !== 1 ? 's' : ''} pendiente{patient.pendingCount !== 1 ? 's' : ''}</span>
-                  </div>
-                  <button
-                    onClick={() => handleBulkDeletePendingAppointments(patient.id, patient.name)}
-                    className="bulk-delete-btn"
-                    title={`Eliminar todos los turnos pendientes de ${patient.name}`}
-                  >
-                    🗑️ Eliminar Pendientes
-                  </button>
-                </div>
-              ))}
+            <div className="bulk-delete-header">
+              <h3>🗑️ Eliminar Turnos Pendientes</h3>
+              <div className="bulk-delete-selector">
+                <select
+                  key={selectKey} // Esto resetea el select cuando cambien los datos
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const [patientId, patientName] = e.target.value.split('|');
+                      handleBulkDeletePendingAppointments(patientId, patientName);
+                      e.target.value = ""; // Reset select
+                    }
+                  }}
+                  className="bulk-delete-select"
+                >
+                  <option value="">Seleccionar paciente para eliminar turnos pendientes...</option>
+                  {getPatientsWithPendingAppointments().map(patient => (
+                    <option 
+                      key={patient.id} 
+                      value={`${patient.id}|${patient.name}`}
+                    >
+                      {patient.name} ({patient.pendingCount} turno{patient.pendingCount !== 1 ? 's' : ''} pendiente{patient.pendingCount !== 1 ? 's' : ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+            <p className="bulk-delete-description">
+              💡 Solo se eliminarán turnos en estado "En Espera". Los turnos finalizados o cancelados no se verán afectados.
+            </p>
           </div>
         )}
         
@@ -554,6 +760,8 @@ Esta acción no se puede deshacer.`}
         onSave={handleSaveEdit}
         patient={editingAppointment.patient}
         existingAppointment={editingAppointment.appointment}
+        isPaid={editingAppointment.isPaid}
+        onPaymentChange={editingAppointment.onPaymentChange}
       />
     </div>
   );

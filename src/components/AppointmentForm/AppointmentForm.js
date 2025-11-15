@@ -64,7 +64,15 @@ function generateRecurringDates(startDate, frequency, maxAppointments = 52) {
   return dates;
 }
 
-function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment = null }) {
+function AppointmentForm({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  patient, 
+  existingAppointment = null, 
+  isPaid = false, 
+  onPaymentChange = null 
+}) {
   const [formData, setFormData] = useState({
     patient_id: patient?.id || '',
     date: '',
@@ -75,6 +83,7 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
   });
 
   const [loading, setLoading] = useState(false);
+  const [localPaymentChecked, setLocalPaymentChecked] = useState(isPaid);
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     message: '',
@@ -109,6 +118,11 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
     }
   }, [isOpen, existingAppointment, patient]);
 
+  // Efecto para sincronizar el estado del pago
+  useEffect(() => {
+    setLocalPaymentChecked(isPaid);
+  }, [isPaid]);
+
   const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -137,7 +151,13 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
           amount: parseFloat(formData.amount),
           date: new Date(formData.date).toISOString()
         };
-        await onSave(appointmentData);
+        
+        // Procesar el pago si el checkbox está marcado y no estaba pagado antes
+        const shouldProcessPayment = localPaymentChecked && !isPaid && 
+                                   (formData.status === 'finalizado' || formData.status === 'cancelado') &&
+                                   formData.amount > 0;
+        
+        await onSave(appointmentData, shouldProcessPayment);
         onClose();
         return;
       }
@@ -359,6 +379,53 @@ function AppointmentForm({ isOpen, onClose, onSave, patient, existingAppointment
               placeholder="Escriba aquí las observaciones, notas de la sesión, o informe psicológico detallado..."
             />
           </div>
+
+          {/* Sección de pago - solo para turnos existentes con estado finalizado/cancelado */}
+          {existingAppointment && 
+           (formData.status === 'finalizado' || formData.status === 'cancelado') && 
+           formData.amount > 0 && 
+           onPaymentChange && (
+            <div className="payment-section">
+              <div className="payment-header">
+                <h3>💰 Pago de Sesión</h3>
+                <span className="payment-amount">
+                  ${parseFloat(formData.amount).toLocaleString('es-AR')}
+                </span>
+              </div>
+              
+              <div className="payment-checkbox-wrapper">
+                <label className="payment-checkbox-container">
+                  <input
+                    type="checkbox"
+                    checked={localPaymentChecked}
+                    onChange={(e) => setLocalPaymentChecked(e.target.checked)}
+                    disabled={isPaid} // No permitir cambiar si ya está pagado
+                    className="payment-checkbox"
+                  />
+                  <span className="payment-checkbox-label">
+                    {isPaid 
+                      ? "✅ Sesión ya está pagada" 
+                      : localPaymentChecked
+                        ? "💳 Registrar pago al actualizar"
+                        : "💳 Marcar para registrar pago"
+                    }
+                  </span>
+                </label>
+                
+                {isPaid && (
+                  <div className="payment-confirmed">
+                    <small>✨ El pago de esta sesión ya fue registrado</small>
+                  </div>
+                )}
+                
+                {!isPaid && localPaymentChecked && (
+                  <div className="payment-pending">
+                    <small>⏳ El pago se registrará al hacer clic en "Actualizar"</small>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="form-actions">
             <button

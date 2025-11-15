@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
+import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
@@ -77,6 +78,7 @@ function formatNextAppointmentDate(dateString) {
 
 function Patients() {
   const { isAuthenticated, token } = useContext(AuthContext);
+  const { onRecurringAppointmentsCreated } = useAppointmentsUpdate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -330,8 +332,31 @@ function Patients() {
       // Si es recurrente y no es única, usar la función de turnos recurrentes
       if (isRecurring && appointmentData.frequency !== 'unica') {
         console.log('Creating recurring appointments...');
-        result = await supabaseRest.createRecurringAppointments(appointmentWithUserId);
-        toast.success(`📅 ${result.length || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`);
+        // Preguntar al usuario si quiere reemplazar turnos existentes del mismo tipo
+        const shouldClearExisting = window.confirm(
+          `¿Desea reemplazar los turnos ${appointmentData.frequency}es existentes pendientes de ${appointmentForm.patient.name}?\n\n` +
+          `Seleccionar "Aceptar" eliminará turnos recurrentes pendientes existentes y creará nuevos.\n` +
+          `Seleccionar "Cancelar" mantendrá los existentes y agregará los nuevos.`
+        );
+        
+        result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
+        
+        let message = `📅 ${result.createdCount || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`;
+        if (result.deletedCount > 0) {
+          message += ` (${result.deletedCount} turnos anteriores reemplazados)`;
+        }
+        toast.success(message);
+        
+        // Trigger appointments list refresh in other components
+        onRecurringAppointmentsCreated({
+          patientId: appointmentForm.patient.id,
+          patientName: appointmentForm.patient.name,
+          frequency: appointmentData.frequency,
+          createdCount: result.createdCount,
+          deletedCount: result.deletedCount,
+          shouldClearExisting
+        });
+        
       } else {
         // Llamar al servicio para crear una sola cita
         result = await supabaseRest.createAppointment(appointmentWithUserId);
