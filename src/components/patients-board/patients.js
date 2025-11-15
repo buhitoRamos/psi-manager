@@ -100,6 +100,11 @@ function Patients() {
     isOpen: false,
     patient: null
   });
+  const [recurringConfirmModal, setRecurringConfirmModal] = useState({
+    isOpen: false,
+    appointmentData: null,
+    appointmentWithUserId: null
+  });
   const [appointmentForm, setAppointmentForm] = useState({
     isOpen: false,
     patient: null
@@ -297,6 +302,52 @@ function Patients() {
     setConfirmModal({ isOpen: false, patient: null });
   };
 
+  const handleRecurringConfirmation = (appointmentData, appointmentWithUserId) => {
+    setRecurringConfirmModal({
+      isOpen: true,
+      appointmentData,
+      appointmentWithUserId
+    });
+  };
+
+  const confirmRecurringAppointments = async (shouldClearExisting) => {
+    const { appointmentData, appointmentWithUserId } = recurringConfirmModal;
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null });
+
+    try {
+      const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
+      
+      let message = `📅 ${result.createdCount || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`;
+      if (result.deletedCount > 0) {
+        message += ` (${result.deletedCount} turnos anteriores reemplazados)`;
+      }
+      toast.success(message);
+
+      // Trigger appointments list refresh in other components
+      onRecurringAppointmentsCreated({
+        patientId: appointmentForm.patient.id,
+        patientName: appointmentForm.patient.name,
+        frequency: appointmentData.frequency,
+        createdCount: result.createdCount,
+        deletedCount: result.deletedCount,
+        shouldClearExisting
+      });
+
+      // Trigger appointments list refresh in other components
+      if (updateTrigger) {
+        updateTrigger();
+      }
+
+    } catch (error) {
+      console.error('Error creating recurring appointments:', error);
+      toast.error(`❌ Error al programar turnos: ${error.message}`);
+    }
+  };
+
+  const cancelRecurringConfirmation = () => {
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null });
+  };
+
   const handleOpenAppointment = (patient) => {
     setAppointmentForm({
       isOpen: true,
@@ -332,30 +383,9 @@ function Patients() {
       // Si es recurrente y no es única, usar la función de turnos recurrentes
       if (isRecurring && appointmentData.frequency !== 'unica') {
         console.log('Creating recurring appointments...');
-        // Preguntar al usuario si quiere reemplazar turnos existentes del mismo tipo
-        const shouldClearExisting = window.confirm(
-          `¿Desea reemplazar los turnos ${appointmentData.frequency}es existentes pendientes de ${appointmentForm.patient.name}?\n\n` +
-          `Seleccionar "Aceptar" eliminará turnos recurrentes pendientes existentes y creará nuevos.\n` +
-          `Seleccionar "Cancelar" mantendrá los existentes y agregará los nuevos.`
-        );
-        
-        result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
-        
-        let message = `📅 ${result.createdCount || 'Múltiples'} turnos ${appointmentData.frequency}es programados para ${appointmentForm.patient.name}`;
-        if (result.deletedCount > 0) {
-          message += ` (${result.deletedCount} turnos anteriores reemplazados)`;
-        }
-        toast.success(message);
-        
-        // Trigger appointments list refresh in other components
-        onRecurringAppointmentsCreated({
-          patientId: appointmentForm.patient.id,
-          patientName: appointmentForm.patient.name,
-          frequency: appointmentData.frequency,
-          createdCount: result.createdCount,
-          deletedCount: result.deletedCount,
-          shouldClearExisting
-        });
+        // Mostrar modal de confirmación para turnos recurrentes
+        handleRecurringConfirmation(appointmentData, appointmentWithUserId);
+        return; // Salir aquí, la confirmación se maneja en el modal
         
       } else {
         // Llamar al servicio para crear una sola cita
@@ -789,6 +819,46 @@ function Patients() {
         cancelText="Cancelar"
         type="danger"
       />
+
+      {/* Modal de confirmación para turnos recurrentes */}
+      {recurringConfirmModal.isOpen && (
+        <div className="appointment-confirm-overlay">
+          <div className="appointment-confirm-modal">
+            <h3>Turnos Recurrentes</h3>
+            <p>
+              ¿Desea reemplazar los turnos {recurringConfirmModal.appointmentData?.frequency}es existentes pendientes de {appointmentForm.patient?.name}?
+            </p>
+            <div className="confirmation-details">
+              <div className="option">
+                <strong>Reemplazar:</strong> Eliminará turnos recurrentes pendientes existentes y creará nuevos.
+              </div>
+              <div className="option">
+                <strong>Mantener:</strong> Mantendrá los existentes y agregará los nuevos.
+              </div>
+            </div>
+            <div className="appointment-confirm-buttons">
+              <button 
+                className="confirm-replace-btn"
+                onClick={() => confirmRecurringAppointments(true)}
+              >
+                Reemplazar
+              </button>
+              <button 
+                className="confirm-keep-btn"
+                onClick={() => confirmRecurringAppointments(false)}
+              >
+                Mantener
+              </button>
+              <button 
+                className="confirm-cancel-btn"
+                onClick={cancelRecurringConfirmation}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal del formulario de turnos */}
       <AppointmentForm
