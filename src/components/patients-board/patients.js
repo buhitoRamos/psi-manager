@@ -78,7 +78,7 @@ function formatNextAppointmentDate(dateString) {
 
 function Patients() {
   const { isAuthenticated, token } = useContext(AuthContext);
-  const { onRecurringAppointmentsCreated } = useAppointmentsUpdate();
+  const { onRecurringAppointmentsCreated, triggerUpdate } = useAppointmentsUpdate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -334,8 +334,8 @@ function Patients() {
       });
 
       // Trigger appointments list refresh in other components
-      if (updateTrigger) {
-        updateTrigger();
+      if (triggerUpdate) {
+        triggerUpdate();
       }
 
     } catch (error) {
