@@ -299,13 +299,36 @@ function Appointments() {
 
     const deletePromise = async () => {
       try {
+        let calendarResult = null;
+        
+        // Primero intentar eliminar del calendario de Google
+        try {
+          const { isAuthorized, deleteAppointmentCalendarEvents } = await import('../../lib/googleCalendar');
+          
+          if (isAuthorized()) {
+            const patientData = {
+              name: appointment.patient_name,
+              last_name: appointment.patient_last_name
+            };
+            
+            console.log('🗑️ Eliminando evento de Google Calendar para:', patientData);
+            calendarResult = await deleteAppointmentCalendarEvents([appointment], patientData);
+          } else {
+            console.log('ℹ️ Google Calendar no está conectado, saltando eliminación de evento');
+          }
+        } catch (calendarError) {
+          console.warn('Warning: Could not delete Google Calendar event:', calendarError);
+          // Continuar aunque falle la eliminación del calendario
+        }
+        
+        // Eliminar turno de la base de datos
         await supabaseRest.deleteAppointment(appointment.id, userId);
         
         // Actualizar estado local inmediatamente
         const updatedAppointments = appointments.filter(apt => apt.id !== appointment.id);
         setAppointments(updatedAppointments);
         
-        return appointment;
+        return { appointment, calendarResult };
       } catch (error) {
         console.error('Error al eliminar turno:', error);
         throw error;
@@ -315,8 +338,17 @@ function Appointments() {
     toast.promise(
       deletePromise(),
       {
-        loading: 'Eliminando turno...',
-        success: (data) => `🗑️ Turno de ${data.patient_name} ${data.patient_last_name} eliminado`,
+        loading: 'Eliminando turno y evento del calendario...',
+        success: (data) => {
+          const { appointment, calendarResult } = data;
+          let message = `🗑️ Turno de ${appointment.patient_name} ${appointment.patient_last_name} eliminado`;
+          
+          if (calendarResult && calendarResult.deleted > 0) {
+            message += ` (evento del calendario eliminado)`;
+          }
+          
+          return message;
+        },
         error: (err) => `❌ Error al eliminar: ${err.message}`,
       },
       {
@@ -343,6 +375,37 @@ function Appointments() {
 
     const deletePromise = async () => {
       try {
+        let calendarResult = null;
+        
+        // Primero intentar eliminar eventos de Google Calendar
+        try {
+          const { isAuthorized, deletePatientCalendarEvents } = await import('../../lib/googleCalendar');
+          
+          if (isAuthorized()) {
+            // Buscar información del paciente para Google Calendar
+            const patientAppointments = appointments.filter(apt => 
+              apt.patient_id === parseInt(patientId, 10) && apt.status === 'en_espera'
+            );
+            
+            if (patientAppointments.length > 0) {
+              const firstAppointment = patientAppointments[0];
+              const patientData = {
+                name: firstAppointment.patient_name,
+                last_name: firstAppointment.patient_last_name
+              };
+              
+              console.log('🗑️ Eliminando eventos de Google Calendar para:', patientName);
+              calendarResult = await deletePatientCalendarEvents(patientData, patientAppointments);
+            }
+          } else {
+            console.log('ℹ️ Google Calendar no está conectado, saltando eliminación de eventos');
+          }
+        } catch (calendarError) {
+          console.warn('Warning: Could not delete Google Calendar events:', calendarError);
+          // Continuar aunque falle la eliminación del calendario
+        }
+        
+        // Eliminar turnos pendientes de la base de datos
         const result = await supabaseRest.deletePendingAppointmentsByPatient(patientId, userId);
         
         // Filtrar los turnos eliminados del estado local inmediatamente
@@ -366,7 +429,7 @@ function Appointments() {
           }
         }, 500); // Pequeño delay para permitir que la DB se actualice
         
-        return result;
+        return { result, calendarResult };
       } catch (error) {
         console.error('Error en eliminación masiva:', error);
         throw error;
@@ -376,8 +439,17 @@ function Appointments() {
     toast.promise(
       deletePromise(),
       {
-        loading: 'Eliminando turnos pendientes...',
-        success: (data) => `🗑️ ${data.deletedCount} turnos pendientes de ${patientName} eliminados`,
+        loading: 'Eliminando turnos pendientes y eventos del calendario...',
+        success: (data) => {
+          const { result, calendarResult } = data;
+          let message = `🗑️ ${result.deletedCount} turnos pendientes de ${patientName} eliminados`;
+          
+          if (calendarResult && calendarResult.deleted > 0) {
+            message += ` (${calendarResult.deleted} eventos del calendario eliminados)`;
+          }
+          
+          return message;
+        },
         error: (err) => `❌ Error al eliminar turnos: ${err.message}`,
       },
       {

@@ -3,8 +3,10 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
 import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
+import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized } from '../../lib/googleCalendar';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
+import GoogleCalendarSettings from '../GoogleCalendarSettings/GoogleCalendarSettings';
 import './patients.css';
 
 // Función para extraer el user_id del token
@@ -104,12 +106,14 @@ function Patients() {
     isOpen: false,
     appointmentData: null,
     appointmentWithUserId: null,
-    patientName: null
+    patientName: null,
+    patientData: null  // Agregar datos completos del paciente
   });
   const [appointmentForm, setAppointmentForm] = useState({
     isOpen: false,
     patient: null
   });
+  const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
 
   useEffect(() => {
     async function loadPatients() {
@@ -270,7 +274,24 @@ function Patients() {
     setConfirmModal({ isOpen: false, patient: null });
 
     const deletePromise = async () => {
-      // Primero eliminar todos los turnos pendientes del paciente
+      let calendarResult = null;
+      
+      // Primero intentar eliminar eventos de Google Calendar
+      try {
+        const { isAuthorized, deletePatientCalendarEvents } = await import('../../lib/googleCalendar');
+        
+        if (isAuthorized()) {
+          console.log('🗑️ Eliminando eventos de Google Calendar para:', patient.name);
+          calendarResult = await deletePatientCalendarEvents(patient);
+        } else {
+          console.log('ℹ️ Google Calendar no está conectado, saltando eliminación de eventos');
+        }
+      } catch (calendarError) {
+        console.warn('Warning: Could not delete Google Calendar events:', calendarError);
+        // Continuar aunque falle la eliminación del calendario
+      }
+      
+      // Eliminar todos los turnos pendientes del paciente
       try {
         await supabaseRest.deletePendingAppointmentsByPatient(patient.id, userId);
       } catch (appointmentError) {
@@ -281,19 +302,29 @@ function Patients() {
       // Luego eliminar el paciente
       await supabaseRest.deletePatient(patient.id, userId);
       setPatients(patients.filter(p => p.id !== patient.id));
-      return patient;
+      
+      return { patient, calendarResult };
     };
 
     toast.promise(
       deletePromise(),
       {
-        loading: 'Eliminando paciente y turnos pendientes...',
-        success: (data) => `🗑️ ${data.name || 'Paciente'} y turnos eliminados correctamente`,
+        loading: 'Eliminando paciente, turnos y eventos del calendario...',
+        success: (data) => {
+          const { patient, calendarResult } = data;
+          let message = `🗑️ ${patient.name || 'Paciente'} y turnos eliminados correctamente`;
+          
+          if (calendarResult && calendarResult.deleted > 0) {
+            message += ` (${calendarResult.deleted} eventos del calendario eliminados)`;
+          }
+          
+          return message;
+        },
         error: (err) => `❌ Error al eliminar: ${err.message}`,
       },
       {
         style: { minWidth: '300px' },
-        success: { duration: 3000, icon: '✅' },
+        success: { duration: 4000, icon: '✅' },
         error: { duration: 5000, icon: '💥' },
       }
     );
@@ -316,13 +347,14 @@ function Patients() {
       isOpen: true,
       appointmentData,
       appointmentWithUserId,
-      patientName // Agregar el nombre calculado al estado
+      patientName, // Agregar el nombre calculado al estado
+      patientData: appointmentForm?.patient // Agregar datos completos del paciente
     });
   };
 
   const confirmRecurringAppointments = async (shouldClearExisting) => {
-    const { appointmentData, appointmentWithUserId, patientName } = recurringConfirmModal;
-    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null });
+    const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
     try {
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
@@ -343,6 +375,30 @@ function Patients() {
       if (deletedCount > 0) {
         message += ` (${deletedCount} turnos anteriores reemplazados)`;
       }
+
+      // Intentar crear eventos en Google Calendar si está autorizado
+      try {
+        if (isAuthorized() && result.appointments && result.appointments.length > 0) {
+          // DEBUGGING: Verificar datos del paciente para turnos recurrentes
+          console.log('🔍 [confirmRecurringAppointments] patientData:', patientData);
+          
+          const calendarResult = await createRecurringCalendarEvents(
+            result.appointments, 
+            patientData  // Usar los datos completos del paciente
+          );
+          
+          if (calendarResult.success) {
+            message += ` y sincronizados con Google Calendar`;
+            if (calendarResult.errors > 0) {
+              message += ` (${calendarResult.errors} eventos no se pudieron sincronizar)`;
+            }
+          }
+        }
+      } catch (calendarError) {
+        console.error('Error creating Google Calendar events:', calendarError);
+        toast.error(`⚠️ Turnos creados pero no se pudieron sincronizar con Google Calendar: ${calendarError.message}`);
+      }
+
       toast.success(message);
 
       // Trigger appointments list refresh in other components
@@ -370,7 +426,7 @@ function Patients() {
   };
 
   const cancelRecurringConfirmation = () => {
-    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null });
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
   };
 
   const handleOpenAppointment = (patient) => {
@@ -415,7 +471,24 @@ function Patients() {
       } else {
         // Llamar al servicio para crear una sola cita
         result = await supabaseRest.createAppointment(appointmentWithUserId);
-        toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+        
+        // Intentar crear evento en Google Calendar si está autorizado
+        try {
+          if (isAuthorized()) {
+            // DEBUGGING: Verificar datos del paciente
+            console.log('🔍 [handleSaveAppointment] appointmentForm.patient:', appointmentForm.patient);
+            console.log('🔍 [handleSaveAppointment] appointmentWithUserId:', appointmentWithUserId);
+            
+            await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
+            toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar`);
+          } else {
+            toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+          }
+        } catch (calendarError) {
+          console.error('Error creating Google Calendar event:', calendarError);
+          toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+          toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${calendarError.message}`);
+        }
       }
       
       // Recargar pacientes con información de deuda y próxima cita actualizada
@@ -496,8 +569,25 @@ function Patients() {
     <div className="patients-container">
       <div className="patients-header">
         <h2>Lista de Pacientes</h2>
-        {patients.length > 0 && addPatient()}
+        <div className="patients-header-actions">
+          {patients.length > 0 && addPatient()}
+          <button
+            className="google-calendar-settings-btn"
+            onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)}
+            title="Configurar Google Calendar"
+          >
+            📅 Google Calendar
+          </button>
+        </div>
         <p className="patients-user-info">Usuario ID: {userId}</p>
+        
+        {/* Configuración de Google Calendar */}
+        {showGoogleCalendarSettings && (
+          <GoogleCalendarSettings 
+            isOpen={showGoogleCalendarSettings}
+            onClose={() => setShowGoogleCalendarSettings(false)}
+          />
+        )}
         
         {/* Campo de búsqueda */}
         <div className="patients-search">

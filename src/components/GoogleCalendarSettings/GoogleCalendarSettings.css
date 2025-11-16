@@ -1,0 +1,674 @@
+/* Modal de configuración de Google Calendar */
+.google-calendar-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.google-calendar-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.google-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc04 75%, #ea4335 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.google-calendar-header h3 {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: 500;
+}
+
+.google-calendar-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.google-calendar-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.google-calendar-content {
+  padding: 24px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+/* Configuración de API */
+.api-config-section {
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.api-config-section h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.api-info {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0 20px 0;
+  color: #1565c0;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+.api-config-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.save-api-btn {
+  background: #4285f4;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.save-api-btn:hover {
+  background: #3367d6;
+}
+
+.cancel-api-btn {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #ced4da;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cancel-api-btn:hover {
+  background: #e9ecef;
+}
+
+.api-help {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.api-help a {
+  color: #4285f4;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.api-help a:hover {
+  text-decoration: underline;
+}
+
+/* Status de API */
+.api-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.api-status.configured {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.api-status.not-configured {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.api-config-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.api-config-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.config-api-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.config-api-btn:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+}
+
+/* Información multi-usuario */
+.multi-user-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.info-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.info-card h5 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.info-card ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.info-card li {
+  margin-bottom: 5px;
+}
+
+@media (max-width: 768px) {
+  .multi-user-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .api-config-actions {
+    flex-direction: column;
+  }
+}
+
+/* Estado de conexión */
+.connection-status {
+  text-align: center;
+}
+
+.connected-status,
+.disconnected-status {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.connected-status {
+  background: #d4edda;
+  border: 2px solid #28a745;
+}
+
+.disconnected-status {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+}
+
+.status-icon {
+  font-size: 24px;
+  font-weight: bold;
+  min-width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-icon.connected {
+  background: #28a745;
+  color: white;
+}
+
+.status-icon.disconnected {
+  background: #ffc107;
+  color: #212529;
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+}
+
+.connected-status .status-info h4 {
+  color: #155724;
+}
+
+.disconnected-status .status-info h4 {
+  color: #856404;
+}
+
+.status-info p {
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.connected-status .status-info p {
+  color: #155724;
+}
+
+.disconnected-status .status-info p {
+  color: #856404;
+}
+
+/* Error message */
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 15px 0;
+  font-size: 14px;
+  border: 1px solid #f5c6cb;
+}
+
+/* Botones de acción mejorados */
+.action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connect-btn {
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 100%;
+  box-shadow: 
+    0 4px 16px rgba(66, 133, 244, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.connect-btn::before {
+  content: '📅';
+  font-size: 20px;
+  animation: pulse 2s infinite;
+}
+
+.connect-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 8px 24px rgba(66, 133, 244, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+}
+
+.connect-btn:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+.connect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.connect-btn:disabled::before {
+  animation: none;
+}
+
+/* Botón de desconectar mejorado */
+.connected-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.disconnect-btn {
+  background: linear-gradient(135deg, #ea4335 0%, #dc3545 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 8px rgba(234, 67, 53, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.disconnect-btn::before {
+  content: '🔓';
+  font-size: 14px;
+}
+
+.disconnect-btn:hover {
+  background: linear-gradient(135deg, #c82333 0%, #b21e2b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(234, 67, 53, 0.4);
+}
+
+/* Botón de configuración de API mejorado */
+.config-api-btn {
+  background: linear-gradient(135deg, #fbbc04 0%, #ff9800 100%);
+  color: #1a1a1a;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 100%;
+  box-shadow: 
+    0 4px 16px rgba(251, 188, 4, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.config-api-btn::before {
+  content: '⚙️';
+  font-size: 18px;
+}
+
+.config-api-btn:hover {
+  background: linear-gradient(135deg, #e0a800 0%, #f57c00 100%);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 6px 20px rgba(251, 188, 4, 0.4),
+    0 3px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Animación pulse para el ícono */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Botones de la configuración de API */
+.save-api-btn {
+  background: linear-gradient(135deg, #4285f4 0%, #1976d2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+}
+
+.save-api-btn:hover {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+}
+
+.cancel-api-btn {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  color: #424242;
+  border: 1px solid #ccc;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.cancel-api-btn:hover {
+  background: linear-gradient(135deg, #e0e0e0 0%, #d5d5d5 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Sección de información */
+.info-section {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.info-section h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 1.1em;
+}
+
+/* Cómo funciona */
+.how-it-works {
+  margin-bottom: 20px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 0;
+}
+
+.step-number {
+  background: #4285f4;
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-content strong {
+  color: #2c3e50;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.step-content p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Beneficios */
+.benefits {
+  border-top: 1px solid #dee2e6;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.benefits h5 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1em;
+}
+
+.benefits ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #6c757d;
+}
+
+.info-section li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* OAuth Configuration Warning */
+.oauth-config-warning {
+  margin: 15px 0;
+  padding: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  color: #856404;
+}
+
+.oauth-config-warning h4 {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  color: #d63031;
+}
+
+.oauth-config-warning p {
+  margin: 8px 0;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.oauth-config-warning code {
+  display: inline-block;
+  margin: 2px 0;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+  color: #2d3748;
+}
+
+.oauth-config-warning small {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .google-calendar-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .google-calendar-header {
+    padding: 15px;
+  }
+  
+  .google-calendar-content {
+    padding: 15px;
+  }
+  
+  .connected-status,
+  .disconnected-status {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  
+  .status-icon {
+    margin: 0 auto;
+  }
+}

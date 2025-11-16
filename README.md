@@ -79,11 +79,43 @@ Este proyecto incluye un sistema completo de gestión de pacientes para profesio
 - ✅ Sistema de citas/turnos con estados
 - ✅ **Turnos recurrentes automáticos** (semanal, quincenal, mensual por 1 año)
 - ✅ **Búsqueda inteligente que ignora acentos/tildes** en todos los módulos
+- ✅ **Integración con Google Calendar** - Sincronización automática de turnos
 - ✅ Gestión de pagos y contribuciones
 - ✅ Cálculo automático de deudas
 - ✅ Visualización de próxima cita por paciente
 - ✅ Diseño responsive y móvil-friendly
 - ✅ Consultas optimizadas con RPC de Supabase
+
+### Variables de Entorno Requeridas
+
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+```env
+# Supabase Configuration
+REACT_APP_SUPABASE_URL=tu_supabase_url
+REACT_APP_SUPABASE_ANON_KEY=tu_supabase_anon_key
+
+# Google Calendar Integration
+REACT_APP_GOOGLE_CLIENT_ID=tu_google_client_id
+REACT_APP_GOOGLE_API_KEY=tu_google_api_key
+```
+
+#### Configuración de Google Calendar API
+
+Para habilitar la integración con Google Calendar:
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un nuevo proyecto o selecciona uno existente
+3. Habilita la API de Google Calendar
+4. Crea credenciales:
+   - **API Key**: Para acceso público a la API
+   - **OAuth 2.0 Client ID**: Para autenticación de usuarios
+5. Configura el dominio autorizado en OAuth 2.0
+6. Agrega las credenciales a tu archivo `.env`
+
+**Permisos requeridos para Google Calendar:**
+- `https://www.googleapis.com/auth/calendar` (lectura y escritura completa)
+- `https://www.googleapis.com/auth/calendar.events` (gestión de eventos)
 
 ### Scripts SQL de Supabase
 
@@ -96,7 +128,6 @@ Para optimizar las consultas de la base de datos, se incluyen varios scripts SQL
 
 #### 2. Consultas de Pacientes Optimizadas
 - `src/sql/get_patients_with_debt_summary.sql`: RPC para obtener pacientes con resumen de deuda
-- `src/sql/patients_with_next_appointment.sql`: **RPC optimizada** que incluye deuda y próxima cita en una sola consulta
 
 #### 3. Gestión de Turnos Recurrentes
 - `src/sql/create_recurring_appointments.sql`: **RPC optimizada** para crear turnos recurrentes (semanal, quincenal, mensual) en una sola operación

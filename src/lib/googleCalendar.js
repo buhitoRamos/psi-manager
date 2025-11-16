@@ -1,0 +1,718 @@
+/**
+ * Google Calendar Integration - Versión con API Real
+ * Usa configuración centralizada desde appConfig.js
+ */
+
+import { GOOGLE_CALENDAR_CONFIG, DEBUG_CONFIG } from '../config/appConfig.js';
+
+let isGoogleLoaded = false;
+let currentUser = null;
+
+/**
+ * Cargar script dinámicamente
+ */
+const loadScript = (src) => {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Inicializar Google APIs con credenciales dinámicas
+ * @param {string} apiKey - API Key desde configuración
+ * @param {string} clientId - Client ID desde configuración
+ */
+export const initializeGoogleAPI = async (apiKey, clientId) => {
+  try {
+    console.log('🚀 Iniciando carga de Google APIs...');
+    
+    // Cargar Google API y Google Identity Services scripts
+    if (!window.gapi) {
+      console.log('📦 Cargando Google API script...');
+      await loadScript('https://apis.google.com/js/api.js');
+    }
+    
+    if (!window.google) {
+      console.log('🔐 Cargando Google Identity Services script...');
+      await loadScript('https://accounts.google.com/gsi/client');
+    }
+      
+    return new Promise((resolve, reject) => {
+      console.log('⚙️ Inicializando gapi client...');
+      
+      window.gapi.load('client:auth2', async () => {
+        try {
+          // Inicializar solo con API Key para cargar la Calendar API
+          await window.gapi.client.init({
+            apiKey: apiKey,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+          });
+
+          console.log('✅ Google API inicializada correctamente');
+          isGoogleLoaded = true;
+          resolve(window.gapi);
+        } catch (error) {
+          console.error('❌ Error inicializando Google API:', error);
+          reject(error);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('❌ Error loading Google API:', error);
+    throw error;
+  }
+};
+
+/**
+ * Autorizar con Google usando Google Identity Services
+ */
+export const authorizeGoogleCalendar = async () => {
+  try {
+    // Usar configuración centralizada en lugar de localStorage
+    const apiKey = GOOGLE_CALENDAR_CONFIG.apiKey;
+    const clientId = GOOGLE_CALENDAR_CONFIG.clientId;
+    
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log('🔑 Iniciando autorización con credenciales configuradas');
+    }
+
+    if (!isGoogleLoaded) {
+      await initializeGoogleAPI(apiKey, clientId);
+    }
+
+    // Verificar que Google Identity Services esté disponible
+    if (!window.google || !window.google.accounts) {
+      console.error('❌ Google Identity Services no está disponible');
+      throw new Error('Google Identity Services no se cargó correctamente. Intenta recargar la página.');
+    }
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log('✅ Google Identity Services disponible, iniciando OAuth...');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/calendar.events',
+          callback: (response) => {
+            if (DEBUG_CONFIG.enableConsoleLogging) {
+              console.log('📥 Respuesta OAuth recibida');
+            }
+            
+            if (response.error) {
+              console.error('❌ OAuth error:', response);
+              reject(new Error(`Error OAuth: ${response.error} - ${response.error_description || ''}`));
+              return;
+            }
+            
+            // Configurar el token de acceso
+            window.gapi.client.setToken({
+              access_token: response.access_token
+            });
+
+            if (DEBUG_CONFIG.enableConsoleLogging) {
+              console.log('🔐 Token configurado, obteniendo perfil...');
+            }
+
+            // Obtener información del perfil usando la API de OAuth2
+            window.gapi.client.request({
+              path: 'https://www.googleapis.com/oauth2/v1/userinfo'
+            }).then((response) => {
+              const profile = response.result;
+              currentUser = {
+                email: profile.email,
+                name: profile.name,
+                image: profile.picture
+              };
+              if (DEBUG_CONFIG.enableConsoleLogging) {
+                console.log('✅ Usuario autorizado:', currentUser);
+              }
+              resolve(currentUser);
+            }).catch((error) => {
+              console.error('❌ Error obteniendo perfil:', error);
+              // Si falla obtener el perfil, usar datos básicos
+              currentUser = {
+                email: 'usuario@gmail.com',
+                name: 'Usuario de Google',
+                image: null
+              };
+              if (DEBUG_CONFIG.enableConsoleLogging) {
+                console.log('⚠️ Usando perfil básico:', currentUser);
+              }
+              resolve(currentUser);
+            });
+          }
+        });
+
+        if (DEBUG_CONFIG.enableConsoleLogging) {
+          console.log('🚀 Solicitando token de acceso...');
+        }
+        // Ejecutar la autorización
+        client.requestAccessToken();
+        
+        // Timeout de seguridad
+        setTimeout(() => {
+          reject(new Error('Timeout: La autorización tardó demasiado. Intenta nuevamente.'));
+        }, 30000); // 30 segundos
+        
+      } catch (clientError) {
+        console.error('❌ Error creando cliente OAuth:', clientError);
+        reject(new Error(`Error inicializando cliente OAuth: ${clientError.message}`));
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error en autorización:', error);
+    throw error;
+  }
+};
+
+/**
+ * Verificar si el usuario está autorizado
+ */
+export const isAuthorized = () => {
+  return window.gapi && window.gapi.client && window.gapi.client.getToken() !== null;
+};
+
+/**
+ * Desconectar usuario
+ */
+export const revokeAuthorization = () => {
+  if (window.gapi && window.gapi.client) {
+    window.gapi.client.setToken(null);
+  }
+  currentUser = null;
+};
+
+/**
+ * Crear evento en Google Calendar usando API real
+ */
+export const createCalendarEvent = async (appointmentData, patientData) => {
+  try {
+    if (!isAuthorized()) {
+      throw new Error('Debes autenticarte con Google primero');
+    }
+
+    // ===== DEBUGGING: Revisar datos recibidos =====
+    console.log('🔍 [createCalendarEvent] appointmentData:', appointmentData);
+    console.log('🔍 [createCalendarEvent] patientData:', patientData);
+
+    const startDate = new Date(appointmentData.date);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hora
+
+    // Formatear el nombre del paciente
+    const patientName = patientData 
+      ? `${patientData.name || ''} ${patientData.last_name || ''}`.trim()
+      : 'Paciente';
+
+    console.log('🔍 [createCalendarEvent] patientName formateado:', patientName);
+
+    const event = {
+      'summary': `Sesión con ${patientName}`,
+      'description': `Sesión de psicología con ${patientName}${appointmentData.observation ? `\n\nObservaciones: ${appointmentData.observation}` : ''}`,
+      'start': {
+        'dateTime': startDate.toISOString(),
+        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      'end': {
+        'dateTime': endDate.toISOString(),
+        'timeZone': Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      'reminders': {
+        'useDefault': true
+      }
+    };
+
+    const response = await window.gapi.client.calendar.events.insert({
+      'calendarId': 'primary',
+      'resource': event
+    });
+
+    console.log('✅ Evento creado en Google Calendar:', response.result);
+    
+    return {
+      success: true,
+      eventId: response.result.id,
+      eventUrl: response.result.htmlLink
+    };
+  } catch (error) {
+    console.error('❌ Error al crear evento:', error);
+    
+    // Si hay error de permisos, crear enlace como fallback
+    if (error.status === 403 || error.status === 401) {
+      return createCalendarEventFallback(appointmentData, patientData);
+    }
+    
+    throw new Error(`No se pudo crear el evento: ${error.message}`);
+  }
+};
+
+/**
+ * Fallback: crear enlace de Google Calendar si la API falla
+ */
+const createCalendarEventFallback = (appointmentData, patientData) => {
+  const startDate = new Date(appointmentData.date);
+  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+  
+  const patientName = patientData 
+    ? `${patientData.name || ''} ${patientData.last_name || ''}`.trim()
+    : 'Paciente';
+
+  const title = `Sesión con ${patientName}`;
+  const description = `Sesión de psicología con ${patientName}${appointmentData.observation ? `\n\nObservaciones: ${appointmentData.observation}` : ''}`;
+  
+  const startDateStr = startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const endDateStr = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  
+  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent(description)}`;
+  
+  // Guardar enlace para mostrar al usuario
+  window.open(calendarUrl, '_blank', 'width=800,height=600');
+  
+  return {
+    success: true,
+    eventId: `fallback-${Date.now()}`,
+    eventUrl: calendarUrl,
+    fallback: true
+  };
+};
+
+/**
+ * Crear múltiples eventos de manera eficiente (SIN abrir ventanas)
+ */
+export const createRecurringCalendarEvents = async (appointments, patientData) => {
+  if (!isAuthorized()) {
+    throw new Error('Debes autenticarte con Google primero');
+  }
+
+  const results = [];
+  const errors = [];
+  let fallbackUsed = false;
+
+  console.log(`🔄 Creando ${appointments.length} eventos de Google Calendar...`);
+
+  // Procesar en lotes pequeños para evitar rate limiting
+  const batchSize = 10;
+  for (let i = 0; i < appointments.length; i += batchSize) {
+    const batch = appointments.slice(i, i + batchSize);
+    
+    const batchPromises = batch.map((appointment, index) => {
+      return new Promise(async (resolve) => {
+        try {
+          // Pequeña pausa entre eventos para evitar rate limiting
+          await new Promise(resolveTimeout => setTimeout(resolveTimeout, index * 100));
+          
+          const result = await createCalendarEvent(appointment, patientData);
+          
+          resolve({ success: true, result, appointment, fallback: result.fallback || false });
+        } catch (error) {
+          console.error('Error creating calendar event:', error);
+          resolve({ success: false, error: error.message, appointment, fallback: false });
+        }
+      });
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    
+    // Procesar resultados y evitar referencia insegura en bucle
+    const successfulResults = [];
+    const failedResults = [];
+    let batchHasFallback = false;
+    
+    batchResults.forEach(item => {
+      if (item.success) {
+        successfulResults.push(item.result);
+        if (item.fallback) {
+          batchHasFallback = true;
+        }
+      } else {
+        failedResults.push({ appointment: item.appointment, error: item.error });
+      }
+    });
+    
+    // Actualizar arrays principales
+    results.push(...successfulResults);
+    errors.push(...failedResults);
+    if (batchHasFallback) {
+      fallbackUsed = true;
+    }
+
+    // Pausa entre lotes
+    if (i + batchSize < appointments.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log(`✅ Procesamiento completado: ${results.length} éxitos, ${errors.length} errores`);
+
+  return {
+    success: results.length > 0,
+    created: results.length,
+    errors: errors.length,
+    results,
+    errorDetails: errors,
+    fallbackUsed: fallbackUsed
+  };
+};
+
+/**
+ * Obtener información del usuario actual
+ */
+export const getCurrentUser = () => {
+  return currentUser;
+};
+
+/**
+ * Buscar eventos en Google Calendar por paciente
+ * @param {Object} patientData - Datos del paciente
+ * @param {Array} appointments - Array de citas para buscar por fechas
+ * @returns {Array} - Lista de eventos encontrados
+ */
+export const findPatientEvents = async (patientData, appointments = []) => {
+  try {
+    if (!isAuthorized()) {
+      throw new Error('Debes autenticarte con Google primero');
+    }
+
+    const patientName = patientData 
+      ? `${patientData.name || ''} ${patientData.last_name || ''}`.trim()
+      : 'Paciente';
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log(`🔍 Buscando eventos para paciente: ${patientName}`);
+    }
+
+    // Si tenemos citas específicas, buscar por rango de fechas
+    let timeMin, timeMax;
+    if (appointments.length > 0) {
+      const dates = appointments.map(apt => new Date(apt.date));
+      timeMin = new Date(Math.min(...dates));
+      timeMax = new Date(Math.max(...dates));
+      
+      // Agregar margen de búsqueda
+      timeMin.setHours(0, 0, 0, 0);
+      timeMax.setHours(23, 59, 59, 999);
+    } else {
+      // Buscar en los últimos 30 días y próximos 365 días
+      timeMin = new Date();
+      timeMin.setDate(timeMin.getDate() - 30);
+      timeMax = new Date();
+      timeMax.setDate(timeMax.getDate() + 365);
+    }
+
+    // Buscar primero con el nombre específico, luego con término genérico
+    let searchQuery = `Sesión con ${patientName}`;
+    
+    console.log('🔍 [findPatientEvents] Buscando con query:', searchQuery);
+    console.log('🔍 [findPatientEvents] rango de fechas:', { timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString() });
+
+    let response = await window.gapi.client.calendar.events.list({
+      calendarId: 'primary',
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      q: searchQuery,
+      singleEvents: true,
+      orderBy: 'startTime'
+    });
+
+    let events = response.result.items || [];
+    
+    // Si no encontramos eventos con el nombre específico, buscar con término genérico
+    if (events.length === 0 && patientName !== 'Paciente') {
+      console.log('🔍 [findPatientEvents] No se encontraron eventos específicos, buscando con término genérico');
+      searchQuery = 'Sesión con';
+      
+      response = await window.gapi.client.calendar.events.list({
+        calendarId: 'primary',
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        q: searchQuery,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+
+      events = response.result.items || [];
+      console.log('🔍 [findPatientEvents] Eventos encontrados con búsqueda genérica:', events.length);
+    }
+    
+    console.log('🔍 [findPatientEvents] Eventos encontrados antes de filtrar:', events.length);
+    
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      events.forEach(event => {
+        console.log('📅 Evento:', {
+          id: event.id,
+          summary: event.summary,
+          start: event.start?.dateTime || event.start?.date,
+          description: event.description
+        });
+      });
+      console.log(`📋 Encontrados ${events.length} eventos para ${patientName}`);
+    }
+
+    const filteredEvents = events.filter(event => {
+      // Filtrar eventos que contengan el nombre del paciente O que sean eventos genéricos de sesión
+      const summary = (event.summary || '').toLowerCase();
+      const description = (event.description || '').toLowerCase();
+      const patientNameLower = patientName.toLowerCase();
+      
+      // Si es un nombre específico, buscar coincidencias
+      let matches = false;
+      if (patientNameLower !== 'paciente') {
+        matches = summary.includes(patientNameLower) || description.includes(patientNameLower);
+      }
+      
+      // Si no hay coincidencias específicas, buscar eventos genéricos de sesión
+      if (!matches) {
+        const isSessionEvent = summary.includes('sesión con') || summary.includes('sesion con');
+        matches = isSessionEvent;
+      }
+      
+      if (DEBUG_CONFIG.enableConsoleLogging) {
+        console.log('🔍 Evaluando evento:', {
+          summary: event.summary,
+          patientNameLower,
+          summaryIncludes: summary.includes(patientNameLower),
+          descriptionIncludes: description.includes(patientNameLower),
+          isSessionEvent: summary.includes('sesión con') || summary.includes('sesion con'),
+          matches
+        });
+      }
+      
+      return matches;
+    });
+
+    console.log('🔍 [findPatientEvents] Eventos después del filtro:', filteredEvents.length);
+
+    return filteredEvents;
+  } catch (error) {
+    console.error('❌ Error buscando eventos:', error);
+    throw new Error(`No se pudieron buscar los eventos: ${error.message}`);
+  }
+};
+
+/**
+ * Eliminar un evento específico de Google Calendar
+ * @param {string} eventId - ID del evento a eliminar
+ * @returns {boolean} - True si se eliminó exitosamente
+ */
+export const deleteCalendarEvent = async (eventId) => {
+  try {
+    if (!isAuthorized()) {
+      throw new Error('Debes autenticarte con Google primero');
+    }
+
+    await window.gapi.client.calendar.events.delete({
+      calendarId: 'primary',
+      eventId: eventId
+    });
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log(`✅ Evento ${eventId} eliminado del calendario`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`❌ Error eliminando evento ${eventId}:`, error);
+    // Si el evento no existe, considerar como éxito
+    if (error.status === 404 || error.status === 410) {
+      if (DEBUG_CONFIG.enableConsoleLogging) {
+        console.log(`⚠️ Evento ${eventId} ya no existe en el calendario`);
+      }
+      return true;
+    }
+    return false;
+  }
+};
+
+/**
+ * Eliminar múltiples eventos de Google Calendar para un paciente
+ * @param {Object} patientData - Datos del paciente
+ * @param {Array} appointments - Array de citas (opcional, para búsqueda más precisa)
+ * @returns {Object} - Resultado de la operación
+ */
+export const deletePatientCalendarEvents = async (patientData, appointments = []) => {
+  try {
+    if (!isAuthorized()) {
+      throw new Error('Debes autenticarte con Google primero');
+    }
+
+    // ===== DEBUGGING: Revisar datos recibidos =====
+    console.log('🗑️ [deletePatientCalendarEvents] patientData:', patientData);
+    console.log('🗑️ [deletePatientCalendarEvents] appointments:', appointments);
+
+    const patientName = patientData 
+      ? `${patientData.name || ''} ${patientData.last_name || ''}`.trim()
+      : 'Paciente';
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log(`🗑️ Eliminando eventos de Google Calendar para: ${patientName}`);
+    }
+
+    // Buscar eventos del paciente
+    const events = await findPatientEvents(patientData, appointments);
+
+    if (events.length === 0) {
+      if (DEBUG_CONFIG.enableConsoleLogging) {
+        console.log(`📭 No se encontraron eventos para eliminar para ${patientName}`);
+      }
+      return {
+        success: true,
+        deleted: 0,
+        errors: 0,
+        message: `No se encontraron eventos en el calendario para ${patientName}`
+      };
+    }
+
+    // Eliminar eventos uno por uno
+    const results = [];
+    const errors = [];
+
+    for (const event of events) {
+      try {
+        const deleted = await deleteCalendarEvent(event.id);
+        if (deleted) {
+          results.push({
+            eventId: event.id,
+            summary: event.summary,
+            start: event.start?.dateTime || event.start?.date,
+            deleted: true
+          });
+        } else {
+          errors.push({
+            eventId: event.id,
+            summary: event.summary,
+            error: 'No se pudo eliminar'
+          });
+        }
+        
+        // Pausa pequeña entre eliminaciones para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error(`❌ Error eliminando evento ${event.id}:`, error);
+        errors.push({
+          eventId: event.id,
+          summary: event.summary,
+          error: error.message
+        });
+      }
+    }
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log(`✅ Eliminación completada: ${results.length} éxitos, ${errors.length} errores`);
+    }
+
+    return {
+      success: results.length > 0,
+      deleted: results.length,
+      errors: errors.length,
+      results,
+      errorDetails: errors,
+      message: `Se eliminaron ${results.length} eventos del calendario${errors.length > 0 ? ` (${errors.length} errores)` : ''}`
+    };
+  } catch (error) {
+    console.error('❌ Error en eliminación masiva:', error);
+    throw new Error(`No se pudieron eliminar los eventos: ${error.message}`);
+  }
+};
+
+/**
+ * Eliminar eventos de Google Calendar basados en citas específicas
+ * @param {Array} appointments - Array de citas a eliminar del calendario
+ * @param {Object} patientData - Datos del paciente
+ * @returns {Object} - Resultado de la operación
+ */
+export const deleteAppointmentCalendarEvents = async (appointments, patientData) => {
+  try {
+    if (!isAuthorized()) {
+      throw new Error('Debes autenticarte con Google primero');
+    }
+
+    // ===== DEBUGGING: Revisar datos recibidos =====
+    console.log('🗑️ [deleteAppointmentCalendarEvents] appointments:', appointments);
+    console.log('🗑️ [deleteAppointmentCalendarEvents] patientData:', patientData);
+
+    if (!appointments || appointments.length === 0) {
+      return {
+        success: true,
+        deleted: 0,
+        errors: 0,
+        message: 'No hay citas para eliminar del calendario'
+      };
+    }
+
+    const patientName = patientData 
+      ? `${patientData.name || ''} ${patientData.last_name || ''}`.trim()
+      : 'Paciente';
+
+    if (DEBUG_CONFIG.enableConsoleLogging) {
+      console.log(`🗑️ Eliminando ${appointments.length} eventos específicos de ${patientName}`);
+    }
+
+    // Buscar eventos del paciente
+    const events = await findPatientEvents(patientData, appointments);
+    
+    // Filtrar eventos que coincidan con las fechas de las citas
+    const appointmentDates = appointments.map(apt => new Date(apt.date).toISOString().split('T')[0]);
+    const matchingEvents = events.filter(event => {
+      const eventDate = new Date(event.start?.dateTime || event.start?.date).toISOString().split('T')[0];
+      return appointmentDates.includes(eventDate);
+    });
+
+    if (matchingEvents.length === 0) {
+      return {
+        success: true,
+        deleted: 0,
+        errors: 0,
+        message: `No se encontraron eventos en el calendario para las citas de ${patientName}`
+      };
+    }
+
+    // Eliminar eventos matching
+    const results = [];
+    const errors = [];
+
+    for (const event of matchingEvents) {
+      try {
+        const deleted = await deleteCalendarEvent(event.id);
+        if (deleted) {
+          results.push({
+            eventId: event.id,
+            summary: event.summary,
+            start: event.start?.dateTime || event.start?.date,
+            deleted: true
+          });
+        } else {
+          errors.push({
+            eventId: event.id,
+            summary: event.summary,
+            error: 'No se pudo eliminar'
+          });
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        errors.push({
+          eventId: event.id,
+          summary: event.summary,
+          error: error.message
+        });
+      }
+    }
+
+    return {
+      success: results.length > 0,
+      deleted: results.length,
+      errors: errors.length,
+      results,
+      errorDetails: errors,
+      message: `Se eliminaron ${results.length} eventos del calendario para ${patientName}`
+    };
+  } catch (error) {
+    console.error('❌ Error eliminando eventos específicos:', error);
+    throw new Error(`No se pudieron eliminar los eventos: ${error.message}`);
+  }
+};

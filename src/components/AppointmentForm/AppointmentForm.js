@@ -94,6 +94,9 @@ function AppointmentForm({
   // Efecto para cargar los datos cuando se abre el modal o cambia existingAppointment
   useEffect(() => {
     if (isOpen) {
+      // DEBUGGING: Verificar datos del paciente recibidos
+      console.log('🔍 [AppointmentForm] patient recibido:', patient);
+      
       if (existingAppointment) {
         // Modo edición: cargar datos existentes
         setFormData({
