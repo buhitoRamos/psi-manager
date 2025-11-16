@@ -7,6 +7,7 @@ import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized } from
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import GoogleCalendarSettings from '../GoogleCalendarSettings/GoogleCalendarSettings';
+import Loading from '../Loading/Loading';
 import './patients.css';
 
 // Función para extraer el user_id del token
@@ -83,6 +84,9 @@ function Patients() {
   const { onRecurringAppointmentsCreated, triggerUpdate } = useAppointmentsUpdate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Cargando pacientes...');
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
   const [error, setError] = useState(null);
   const [userId, setUserId] = useState(null);
   const [expandedPatient, setExpandedPatient] = useState(null);
@@ -125,15 +129,18 @@ function Patients() {
 
       setLoading(true);
       setError(null);
+      setLoadingMessage('Inicializando...');
       
       try {
         // Obtener el token del localStorage
+        setLoadingMessage('Verificando autenticación...');
         const token = localStorage.getItem('token');
         if (!token) {
           throw new Error('No se encontró el token de autenticación');
         }
 
         // Extraer el user_id del token
+        setLoadingMessage('Obteniendo información del usuario...');
         const extractedUserId = extractUserIdFromToken(token);
         if (!extractedUserId) {
           throw new Error('No se pudo obtener el ID del usuario del token');
@@ -142,16 +149,19 @@ function Patients() {
         setUserId(extractedUserId);
         
         // Consultar la API REST de Supabase para obtener pacientes con información de deuda y próxima cita
+        setLoadingMessage('Cargando lista de pacientes...');
         const patientsData = await supabaseRest.getPatientsWithNextAppointment(extractedUserId);
         // eslint-disable-next-line no-console
         console.debug('[Patients] getPatientsWithNextAppointment result:', patientsData);
         
+        setLoadingMessage('Finalizando carga...');
         setPatients(patientsData || []);
 
       } catch (err) {
         setError(err.message || 'Error al cargar los pacientes');
       } finally {
         setLoading(false);
+        setLoadingMessage('');
       }
     }
 
@@ -357,6 +367,7 @@ function Patients() {
     setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
     try {
+      setAppointmentLoading(true);
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
       
       // Validar que result existe y tiene las propiedades esperadas
@@ -377,6 +388,7 @@ function Patients() {
       }
 
       // Intentar crear eventos en Google Calendar si está autorizado
+      setCalendarLoading(true);
       try {
         if (isAuthorized() && result.appointments && result.appointments.length > 0) {
           // DEBUGGING: Verificar datos del paciente para turnos recurrentes
@@ -397,6 +409,8 @@ function Patients() {
       } catch (calendarError) {
         console.error('Error creating Google Calendar events:', calendarError);
         toast.error(`⚠️ Turnos creados pero no se pudieron sincronizar con Google Calendar: ${calendarError.message}`);
+      } finally {
+        setCalendarLoading(false);
       }
 
       toast.success(message);
@@ -422,6 +436,8 @@ function Patients() {
       console.error('Error creating recurring appointments:', error);
       const errorMessage = error?.message || 'Error desconocido';
       toast.error(`❌ Error al programar turnos: ${errorMessage}`);
+    } finally {
+      setAppointmentLoading(false);
     }
   };
 
@@ -445,6 +461,8 @@ function Patients() {
 
   const handleSaveAppointment = async (appointmentData, isRecurring = false) => {
     try {
+      setAppointmentLoading(true);
+      
       const userId = extractUserIdFromToken(token);
       if (!userId) {
         toast.error('Error de autenticación');
@@ -473,6 +491,7 @@ function Patients() {
         result = await supabaseRest.createAppointment(appointmentWithUserId);
         
         // Intentar crear evento en Google Calendar si está autorizado
+        setCalendarLoading(true);
         try {
           if (isAuthorized()) {
             // DEBUGGING: Verificar datos del paciente
@@ -488,6 +507,8 @@ function Patients() {
           console.error('Error creating Google Calendar event:', calendarError);
           toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
           toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${calendarError.message}`);
+        } finally {
+          setCalendarLoading(false);
         }
       }
       
@@ -503,6 +524,8 @@ function Patients() {
       console.error('Error saving appointment:', error);
       toast.error('Error al guardar el turno');
       throw error;
+    } finally {
+      setAppointmentLoading(false);
     }
   };
 
@@ -539,12 +562,11 @@ function Patients() {
 
   if (loading) {
     return (
-      <div className="patients-container">
-        <div className="patients-loading">
-          <img src="/logo.svg" alt="Psi" className="loading" />
-          <p>Cargando pacientes...</p>
-        </div>
-      </div>
+      <Loading 
+        message={loadingMessage}
+        size="large"
+        overlay={true}
+      />
     );
   }
 
@@ -982,6 +1004,23 @@ function Patients() {
         onSave={handleSaveAppointment}
         patient={appointmentForm.patient}
       />
+
+      {/* Loading Overlays */}
+      {calendarLoading && (
+        <Loading 
+          message="Sincronizando con Google Calendar..."
+          size="large"
+          overlay={true}
+        />
+      )}
+
+      {appointmentLoading && (
+        <Loading 
+          message="Creando turnos..."
+          size="large"
+          overlay={true}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext'
 import supabaseRest from '../../lib/supabaseRest';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
+import Loading from '../Loading/Loading';
 import './Appointments.css';
 
 // Función para extraer el user_id del token
@@ -33,6 +34,8 @@ function Appointments() {
   const appointmentsUpdate = useAppointmentsUpdate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Cargando turnos...');
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -65,9 +68,11 @@ function Appointments() {
 
       setLoading(true);
       setError(null);
+      setLoadingMessage('Verificando autenticación...');
       
       try {
         // Extraer el user_id del token
+        setLoadingMessage('Obteniendo información del usuario...');
         const extractedUserId = extractUserIdFromToken(token);
         if (!extractedUserId) {
           throw new Error('No se pudo obtener el ID del usuario del token');
@@ -76,12 +81,14 @@ function Appointments() {
         setUserId(extractedUserId);
         
         // Obtener todas las citas del usuario
+        setLoadingMessage('Cargando turnos...');
         const appointmentsData = await supabaseRest.getAppointmentsByUserId(extractedUserId);
         console.debug('[Appointments] getAppointmentsByUserId result:', appointmentsData);
         
         setAppointments(appointmentsData || []);
 
         // Cargar los pagos para identificar qué sesiones están pagadas
+        setLoadingMessage('Cargando información de pagos...');
         try {
           const payments = await supabaseRest.getPaymentsByUserId(extractedUserId);
           const paidSessionIds = new Set(
@@ -100,6 +107,7 @@ function Appointments() {
         setError(err.message || 'Error al cargar los turnos');
       } finally {
         setLoading(false);
+        setLoadingMessage('');
       }
     }
 
@@ -299,6 +307,7 @@ function Appointments() {
 
     const deletePromise = async () => {
       try {
+        setCalendarLoading(true);
         let calendarResult = null;
         
         // Primero intentar eliminar del calendario de Google
@@ -332,6 +341,8 @@ function Appointments() {
       } catch (error) {
         console.error('Error al eliminar turno:', error);
         throw error;
+      } finally {
+        setCalendarLoading(false);
       }
     };
 
@@ -375,6 +386,7 @@ function Appointments() {
 
     const deletePromise = async () => {
       try {
+        setCalendarLoading(true);
         let calendarResult = null;
         
         // Primero intentar eliminar eventos de Google Calendar
@@ -433,6 +445,8 @@ function Appointments() {
       } catch (error) {
         console.error('Error en eliminación masiva:', error);
         throw error;
+      } finally {
+        setCalendarLoading(false);
       }
     };
 
@@ -570,12 +584,11 @@ function Appointments() {
 
   if (loading) {
     return (
-      <div className="appointments-container">
-        <div className="appointments-loading">
-          <img src="/logo.svg" alt="Psi" className="loading" />
-          <p>Cargando turnos...</p>
-        </div>
-      </div>
+      <Loading 
+        message={loadingMessage}
+        size="large"
+        overlay={true}
+      />
     );
   }
 
@@ -832,6 +845,15 @@ Esta acción no se puede deshacer.`}
         isPaid={editingAppointment.isPaid}
         onPaymentChange={editingAppointment.onPaymentChange}
       />
+
+      {/* Loading Overlay para operaciones de calendario */}
+      {calendarLoading && (
+        <Loading 
+          message="Sincronizando con Google Calendar..."
+          size="large"
+          overlay={true}
+        />
+      )}
     </div>
   );
 }

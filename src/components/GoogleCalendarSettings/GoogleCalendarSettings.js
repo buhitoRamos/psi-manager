@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { GOOGLE_CALENDAR_CONFIG, validateConfig, DEBUG_CONFIG } from '../../config/appConfig.js';
+import Loading from '../Loading/Loading';
 import './GoogleCalendarSettings.css';
 
 function GoogleCalendarSettings({ isOpen, onClose }) {
@@ -22,6 +23,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
   };
 
   const checkConnection = async () => {
+    setIsLoading(true);
     try {
       const { isAuthorized, getCurrentUser } = await import('../../lib/googleCalendar');
       if (isAuthorized()) {
@@ -34,6 +36,8 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
       }
     } catch (error) {
       console.error('Error checking connection:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -48,143 +52,170 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
     try {
       const { initializeGoogleAPI, authorizeGoogleCalendar } = await import('../../lib/googleCalendar');
       
-      // Las credenciales se obtienen automáticamente desde appConfig.js
-      await initializeGoogleAPI(GOOGLE_CALENDAR_CONFIG.apiKey, GOOGLE_CALENDAR_CONFIG.clientId);
+      const isInitialized = await initializeGoogleAPI();
+      if (!isInitialized) {
+        throw new Error('No se pudo inicializar la API de Google');
+      }
+
+      const result = await authorizeGoogleCalendar();
       
-      // Autorizar al usuario actual
-      const profile = await authorizeGoogleCalendar();
-      
-      if (profile) {
+      if (result.success) {
         setIsConnected(true);
-        setUserInfo(profile);
-        toast.success('✅ Conectado exitosamente con Google Calendar');
+        setUserInfo(result.userInfo);
+        toast.success('¡Conectado a Google Calendar exitosamente!');
+        
+        if (DEBUG_CONFIG.enableConsoleLogging) {
+          console.log('✅ Conexión exitosa:', result.userInfo);
+        }
       } else {
-        throw new Error('No se pudo obtener el perfil del usuario');
+        // Error de autorización, pero no mostrar toast si el usuario canceló
+        const errorMessage = result.error || 'Error en la autorización';
+        setError(errorMessage);
+        
+        // Solo mostrar toast si no fue cancelado por el usuario
+        if (!errorMessage.includes('cerrada') && !errorMessage.includes('closed')) {
+          toast.error(errorMessage);
+        }
+        
+        if (DEBUG_CONFIG.enableConsoleLogging) {
+          console.log('⚠️ Autorización no exitosa:', result.error);
+        }
       }
     } catch (error) {
-      console.error('❌ Error connecting:', error);
-      
-      let errorMessage = error.message;
-      
-      if (error.message.includes('popup')) {
-        errorMessage = 'Popup bloqueado. Permite popups para este sitio e intenta nuevamente.';
-      } else if (error.message.includes('unauthorized_client')) {
-        errorMessage = 'Client ID no autorizado. Verifica la configuración en Google Cloud Console.';
-      } else if (error.message.includes('Timeout')) {
-        errorMessage = 'La autorización tardó demasiado. Intenta nuevamente.';
-      } else if (error.message.includes('redirect_uri_mismatch')) {
-        errorMessage = 'URL no autorizada. Agrega http://localhost:8080 a Google Cloud Console.';
-      }
-      
+      const errorMessage = error.message || 'Error al conectar con Google Calendar';
       setError(errorMessage);
-      toast.error('❌ ' + errorMessage);
+      toast.error(errorMessage);
+      
+      if (DEBUG_CONFIG.enableConsoleLogging) {
+        console.error('❌ Error en conexión:', error);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
+    setIsLoading(true);
     try {
-      const { revokeAuthorization } = require('../../lib/googleCalendar');
-      revokeAuthorization();
+      const { disconnectGoogleCalendar } = await import('../../lib/googleCalendar');
+      await disconnectGoogleCalendar();
+      
       setIsConnected(false);
       setUserInfo(null);
-      toast.success('🔓 Desconectado exitosamente');
+      toast.success('Desconectado de Google Calendar');
+      
+      if (DEBUG_CONFIG.enableConsoleLogging) {
+        console.log('🔌 Desconectado de Google Calendar');
+      }
     } catch (error) {
+      const errorMessage = 'Error al desconectar de Google Calendar';
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error disconnecting:', error);
-      toast.error('❌ Error al desconectar');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="google-calendar-modal-overlay" onClick={onClose}>
-      <div className="google-calendar-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="google-calendar-modal-overlay">
+      <div className="google-calendar-modal">
         <div className="google-calendar-header">
-          <h3>📅 Google Calendar</h3>
-          <button className="google-calendar-close" onClick={onClose}>×</button>
+          <h2>Google Calendar Settings</h2>
+          <button 
+            className="close-button" 
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            ×
+          </button>
         </div>
 
         <div className="google-calendar-content">
-          <div className="connection-status">
-            {isConnected && userInfo ? (
-              <div className="connected-status">
-                <div className="status-icon connected">✓</div>
-                <div className="status-info">
-                  <h4>Conectado a Google Calendar</h4>
-                  <p><strong>Email:</strong> {userInfo.email}</p>
-                  <p><strong>Nombre:</strong> {userInfo.name}</p>
-                </div>
-                <button onClick={handleDisconnect} className="disconnect-btn">
-                  🔌 Desconectar
-                </button>
-              </div>
-            ) : (
-              <div className="disconnected-status">
-                <div className="status-icon disconnected">✗</div>
-                <div className="status-info">
-                  <h4>No conectado</h4>
-                  <p>Conecta tu cuenta de Google para sincronizar turnos automáticamente</p>
-                </div>
-                <button 
-                  onClick={handleConnect} 
-                  disabled={isLoading}
-                  className="connect-btn"
-                >
-                  {isLoading ? '🔄 Conectando...' : '🔗 Conectar con Google'}
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div className="error-message">
-                <span>❌ {error}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="info-section">
-            <h4>🚀 ¿Cómo funciona?</h4>
-            <div className="how-it-works">
-              <div className="step">
-                <span className="step-number">1</span>
-                <div className="step-content">
-                  <strong>Conectar cuenta</strong>
-                  <p>Autoriza tu cuenta de Google Calendar</p>
-                </div>
-              </div>
-              
-              <div className="step">
-                <span className="step-number">2</span>
-                <div className="step-content">
-                  <strong>Crear turnos</strong>
-                  <p>Los turnos se agregan automáticamente a tu calendar</p>
-                </div>
-              </div>
-              
-              <div className="step">
-                <span className="step-number">3</span>
-                <div className="step-content">
-                  <strong>Sincronización automática</strong>
-                  <p>Ve tus turnos en Google Calendar sin ventanas adicionales</p>
-                </div>
-              </div>
+          {error && (
+            <div className="error-message">
+              {error}
             </div>
+          )}
 
-            <div className="benefits">
-              <h5>✨ Beneficios:</h5>
-              <ul>
-                <li>✅ Configuración automática - sin APIs complejas</li>
-                <li>✅ Funciona con cualquier cuenta de Google</li>
-                <li>✅ <strong>NO abre múltiples ventanas</strong> para turnos recurrentes</li>
-                <li>✅ Sincronización automática en tiempo real</li>
-                <li>✅ Los eventos aparecen en tu calendario personal</li>
-                <li>✅ Puedes editarlos después en Google Calendar</li>
-              </ul>
+          {isConnected ? (
+            <div className="connected-section">
+              <div className="connection-status connected">
+                <i className="fas fa-check-circle"></i>
+                <span>Conectado a Google Calendar</span>
+              </div>
+              
+              {userInfo && (
+                <div className="user-info">
+                  <div className="user-detail">
+                    <strong>Email:</strong> {userInfo.email}
+                  </div>
+                  {userInfo.name && (
+                    <div className="user-detail">
+                      <strong>Nombre:</strong> {userInfo.name}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button 
+                className="disconnect-button"
+                onClick={handleDisconnect}
+                disabled={isLoading}
+              >
+                Desconectar Google Calendar
+              </button>
+            </div>
+          ) : (
+            <div className="disconnected-section">
+              <div className="connection-status disconnected">
+                <i className="fas fa-times-circle"></i>
+                <span>No conectado a Google Calendar</span>
+              </div>
+
+              <button 
+                className="connect-button"
+                onClick={handleConnect}
+                disabled={isLoading}
+              >
+                Conectar Google Calendar
+              </button>
+            </div>
+          )}
+
+          <div className="configuration-info">
+            <h3>Información de Configuración:</h3>
+            <div className="config-details">
+              <div className="config-item">
+                <strong>Cliente ID:</strong> 
+                <span className="config-value">
+                  {GOOGLE_CALENDAR_CONFIG.CLIENT_ID ? 
+                    `${GOOGLE_CALENDAR_CONFIG.CLIENT_ID.substring(0, 20)}...` : 
+                    'No configurado'
+                  }
+                </span>
+              </div>
+              <div className="config-item">
+                <strong>API Key:</strong>
+                <span className="config-value">
+                  {GOOGLE_CALENDAR_CONFIG.API_KEY ? 
+                    `${GOOGLE_CALENDAR_CONFIG.API_KEY.substring(0, 20)}...` : 
+                    'No configurado'
+                  }
+                </span>
+              </div>
             </div>
           </div>
         </div>
+        
+        {isLoading && (
+          <Loading 
+            message="Configurando Google Calendar..." 
+            overlay={true}
+          />
+        )}
       </div>
     </div>
   );

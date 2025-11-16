@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import Loading from '../Loading/Loading';
 import './AppointmentForm.css';
 
 // Función auxiliar para obtener el nombre del día de la semana
@@ -489,6 +490,15 @@ function AppointmentForm({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Loading Overlay */}
+      {loading && (
+        <Loading 
+          message="Procesando turno..."
+          size="large"
+          overlay={true}
+        />
       )}
     </div>
   );

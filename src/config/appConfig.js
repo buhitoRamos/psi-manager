@@ -13,8 +13,8 @@ export const DATABASE_CONFIG = {
 
 // 📅 Configuración de Google Calendar
 export const GOOGLE_CALENDAR_CONFIG = {
-  apiKey: process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyCoN69ay8wqd4ApoMsZmeVx9qKDj8JPcdY',
-  clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || '501215429458-mkc6m9gs38cau7nggkfr59381in21cdp.apps.googleusercontent.com'
+  apiKey: process.env.REACT_APP_GOOGLE_API_KEY || 'your-api-key-here',
+  clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'your-client-id-here.apps.googleusercontent.com'
 };
 
 // 🔐 Configuración de Autenticación
