@@ -8,6 +8,47 @@ import { GOOGLE_CALENDAR_CONFIG, DEBUG_CONFIG } from '../config/appConfig.js';
 let isGoogleLoaded = false;
 let currentUser = null;
 
+// Clave para localStorage
+const LOCAL_STORAGE_KEY = 'googleCalendarSession';
+
+// Función para restaurar sesión desde localStorage
+const restoreSessionFromStorage = () => {
+  try {
+    const savedSession = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      if (session && session.access_token && session.userInfo) {
+        currentUser = session.userInfo;
+        // Solo configurar token si gapi está disponible
+        if (window.gapi && window.gapi.client) {
+          window.gapi.client.setToken({ access_token: session.access_token });
+        }
+        return true;
+      }
+    }
+  } catch (error) {
+    console.error('Error restaurando sesión desde localStorage:', error);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  }
+  return false;
+};
+
+// Función para guardar sesión en localStorage
+const saveSessionToStorage = (accessToken, userInfo) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+      access_token: accessToken,
+      userInfo: userInfo,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Error guardando sesión en localStorage:', error);
+  }
+};
+
+// Restaurar sesión al cargar el módulo
+restoreSessionFromStorage();
+
 /**
  * Cargar script dinámicamente
  */
@@ -54,6 +95,12 @@ export const initializeGoogleAPI = async (apiKey, clientId) => {
 
           console.log('✅ Google API inicializada correctamente');
           isGoogleLoaded = true;
+          
+          // Restaurar sesión desde localStorage si existe
+          if (restoreSessionFromStorage()) {
+            console.log('🔄 Sesión de Google Calendar restaurada desde localStorage');
+          }
+          
           resolve(window.gapi);
         } catch (error) {
           console.error('❌ Error inicializando Google API:', error);
@@ -169,8 +216,11 @@ export const authorizeGoogleCalendar = async () => {
               authenticated: true
             };
             
+            // Guardar sesión en localStorage
+            saveSessionToStorage(response.access_token, currentUser);
+            
             if (DEBUG_CONFIG.enableConsoleLogging) {
-              console.log('✅ Usuario autorizado con Google Calendar');
+              console.log('✅ Usuario autorizado con Google Calendar y sesión guardada');
             }
             
             // Retornar objeto con formato esperado
@@ -213,6 +263,12 @@ export const authorizeGoogleCalendar = async () => {
  * Verificar si el usuario está autorizado
  */
 export const isAuthorized = () => {
+  // Primero verificar localStorage
+  if (restoreSessionFromStorage()) {
+    return true;
+  }
+  
+  // Luego verificar gapi
   return window.gapi && window.gapi.client && window.gapi.client.getToken() !== null;
 };
 
@@ -224,6 +280,46 @@ export const revokeAuthorization = () => {
     window.gapi.client.setToken(null);
   }
   currentUser = null;
+  
+  // Eliminar sesión de localStorage
+  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  
+  if (DEBUG_CONFIG.enableConsoleLogging) {
+    console.log('🔌 Sesión de Google Calendar eliminada completamente');
+  }
+};
+
+/**
+ * Obtener usuario actual
+ */
+export const getCurrentUser = () => {
+  // Si tenemos usuario en memoria, devolverlo
+  if (currentUser) {
+    return currentUser;
+  }
+  
+  // Si no, intentar restaurar desde localStorage
+  try {
+    const savedSession = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      if (session && session.userInfo) {
+        currentUser = session.userInfo;
+        return currentUser;
+      }
+    }
+  } catch (error) {
+    console.error('Error obteniendo usuario desde localStorage:', error);
+  }
+  
+  return null;
+};
+
+/**
+ * Desconectar de Google Calendar (alias para revokeAuthorization)
+ */
+export const disconnectGoogleCalendar = () => {
+  revokeAuthorization();
 };
 
 /**
@@ -395,13 +491,6 @@ export const createRecurringCalendarEvents = async (appointments, patientData) =
     errorDetails: errors,
     fallbackUsed: fallbackUsed
   };
-};
-
-/**
- * Obtener información del usuario actual
- */
-export const getCurrentUser = () => {
-  return currentUser;
 };
 
 /**

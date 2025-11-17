@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { GOOGLE_CALENDAR_CONFIG, validateConfig, DEBUG_CONFIG } from '../../config/appConfig.js';
+import { validateConfig, DEBUG_CONFIG } from '../../config/appConfig.js';
 import Loading from '../Loading/Loading';
 import './GoogleCalendarSettings.css';
 
@@ -22,20 +22,27 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
     }
   };
 
-  const checkConnection = async () => {
+    const checkConnection = async () => {
     setIsLoading(true);
     try {
       const { isAuthorized, getCurrentUser } = await import('../../lib/googleCalendar');
+      
       if (isAuthorized()) {
-        setIsConnected(true);
         const user = getCurrentUser();
+        setIsConnected(true);
         setUserInfo(user);
+        
+        if (DEBUG_CONFIG.enableConsoleLogging) {
+          console.log('🔄 Sesión de Google Calendar detectada:', user);
+        }
       } else {
         setIsConnected(false);
         setUserInfo(null);
       }
     } catch (error) {
       console.error('Error checking connection:', error);
+      setIsConnected(false);
+      setUserInfo(null);
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +132,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
         <div className="google-calendar-header">
           <h2>Google Calendar Settings</h2>
           <button 
-            className="close-button" 
+            className="google-calendar-close" 
             onClick={onClose}
             disabled={isLoading}
           >
@@ -147,21 +154,9 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
                 <span>Conectado a Google Calendar</span>
               </div>
               
-              {userInfo && (
-                <div className="user-info">
-                  <div className="user-detail">
-                    <strong>Email:</strong> {userInfo.email}
-                  </div>
-                  {userInfo.name && (
-                    <div className="user-detail">
-                      <strong>Nombre:</strong> {userInfo.name}
-                    </div>
-                  )}
-                </div>
-              )}
 
               <button 
-                className="disconnect-button"
+                className="disconnect-btn"
                 onClick={handleDisconnect}
                 disabled={isLoading}
               >
@@ -176,7 +171,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
               </div>
 
               <button 
-                className="connect-button"
+                className="connect-btn"
                 onClick={handleConnect}
                 disabled={isLoading}
               >
@@ -184,30 +179,6 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
               </button>
             </div>
           )}
-
-          <div className="configuration-info">
-            <h3>Información de Configuración:</h3>
-            <div className="config-details">
-              <div className="config-item">
-                <strong>Cliente ID:</strong> 
-                <span className="config-value">
-                  {GOOGLE_CALENDAR_CONFIG.CLIENT_ID ? 
-                    `${GOOGLE_CALENDAR_CONFIG.CLIENT_ID.substring(0, 20)}...` : 
-                    'No configurado'
-                  }
-                </span>
-              </div>
-              <div className="config-item">
-                <strong>API Key:</strong>
-                <span className="config-value">
-                  {GOOGLE_CALENDAR_CONFIG.API_KEY ? 
-                    `${GOOGLE_CALENDAR_CONFIG.API_KEY.substring(0, 20)}...` : 
-                    'No configurado'
-                  }
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
         
         {isLoading && (

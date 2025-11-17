@@ -43,29 +43,92 @@
 }
 
 .google-calendar-close {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
   border: none;
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 300;
   cursor: pointer;
   color: white;
-  padding: 8px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  width: 40px;
-  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1;
+}
+
+.google-calendar-close::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.google-calendar-close:hover::before {
+  transform: scale(1);
 }
 
 .google-calendar-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.google-calendar-close:active {
+  transform: scale(0.95);
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
+}
+
+.google-calendar-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.google-calendar-close:disabled:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: none;
+  box-shadow: none;
 }
 
 .google-calendar-content {
-  padding: 24px;
-  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 32px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 50%, #ffffff 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.google-calendar-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(66, 133, 244, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(52, 168, 83, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(251, 188, 4, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.google-calendar-content > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Configuración de API */
@@ -263,51 +326,130 @@
   }
 }
 
-/* Estado de conexión */
-.connection-status {
+/* Secciones de conexión */
+.connected-section,
+.disconnected-section {
   text-align: center;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.connection-status.connected {
+  background: linear-gradient(135deg, rgba(212, 237, 218, 0.9) 0%, rgba(40, 167, 69, 0.1) 100%);
+  color: #155724;
+  border: 2px solid #28a745;
+  box-shadow: 
+    0 4px 16px rgba(40, 167, 69, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.connection-status.disconnected {
+  background: linear-gradient(135deg, rgba(255, 243, 205, 0.9) 0%, rgba(255, 193, 7, 0.1) 100%);
+  color: #856404;
+  border: 2px solid #ffc107;
+  box-shadow: 
+    0 4px 16px rgba(255, 193, 7, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .connected-status,
 .disconnected-status {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
   text-align: left;
+  backdrop-filter: blur(8px);
+  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
 }
 
 .connected-status {
-  background: #d4edda;
-  border: 2px solid #28a745;
+  background: linear-gradient(135deg, rgba(212, 237, 218, 0.9) 0%, rgba(40, 167, 69, 0.1) 100%);
+  border-image: linear-gradient(135deg, #28a745, #34a853) 1;
+  box-shadow: 
+    0 8px 32px rgba(40, 167, 69, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.connected-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(52, 168, 83, 0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .disconnected-status {
-  background: #fff3cd;
-  border: 2px solid #ffc107;
+  background: linear-gradient(135deg, rgba(255, 243, 205, 0.9) 0%, rgba(255, 193, 7, 0.1) 100%);
+  border-image: linear-gradient(135deg, #ffc107, #ff9800) 1;
+  box-shadow: 
+    0 8px 32px rgba(255, 193, 7, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.disconnected-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .status-icon {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
-  min-width: 50px;
-  height: 50px;
+  min-width: 60px;
+  height: 60px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
 }
 
 .status-icon.connected {
-  background: #28a745;
+  background: linear-gradient(135deg, #28a745 0%, #34a853 100%);
   color: white;
+  box-shadow: 
+    0 8px 24px rgba(40, 167, 69, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2);
 }
 
 .status-icon.disconnected {
-  background: #ffc107;
-  color: #212529;
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: #1a1a1a;
+  box-shadow: 
+    0 8px 24px rgba(255, 193, 7, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
 }
 
 .status-info {
@@ -360,56 +502,81 @@
 }
 
 .connect-btn {
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc04 75%, #ea4335 100%);
+  background-size: 300% 100%;
   color: white;
   border: none;
-  padding: 16px 32px;
-  border-radius: 12px;
+  padding: 18px 40px;
+  border-radius: 16px;
   font-size: 16px;
   font-weight: 600;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   width: 100%;
   box-shadow: 
-    0 4px 16px rgba(66, 133, 244, 0.3),
-    0 2px 8px rgba(0, 0, 0, 0.1);
+    0 8px 32px rgba(66, 133, 244, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
+  backdrop-filter: blur(8px);
+  letter-spacing: 0.5px;
 }
 
 .connect-btn::before {
-  content: '📅';
-  font-size: 20px;
-  animation: pulse 2s infinite;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.connect-btn::after {
+  content: '🌟';
+  font-size: 18px;
+  animation: sparkle 2s infinite ease-in-out;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 
 .connect-btn:hover {
-  transform: translateY(-3px) scale(1.02);
+  transform: translateY(-4px) scale(1.02);
   box-shadow: 
-    0 8px 24px rgba(66, 133, 244, 0.4),
-    0 4px 16px rgba(0, 0, 0, 0.15);
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+    0 12px 48px rgba(66, 133, 244, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background-position: 100% 0;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d652d 50%, #f9ab00 75%, #d93025 100%);
+}
+
+.connect-btn:hover::before {
+  left: 100%;
 }
 
 .connect-btn:active {
-  transform: translateY(-1px) scale(1.01);
+  transform: translateY(-2px) scale(1.01);
+  transition: all 0.1s ease;
 }
 
 .connect-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  background: #ccc;
+  background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: none;
 }
 
-.connect-btn:disabled::before {
+.connect-btn:disabled::after {
   animation: none;
+  content: '⏳';
 }
 
 /* Botón de desconectar mejorado */
@@ -420,110 +587,327 @@
 }
 
 .disconnect-btn {
-  background: linear-gradient(135deg, #ea4335 0%, #dc3545 100%);
+  background: linear-gradient(135deg, #ea4335 0%, #d32f2f 50%, #c62828 100%);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 2px 8px rgba(234, 67, 53, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.disconnect-btn::before {
-  content: '🔓';
-  font-size: 14px;
-}
-
-.disconnect-btn:hover {
-  background: linear-gradient(135deg, #c82333 0%, #b21e2b 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(234, 67, 53, 0.4);
-}
-
-/* Botón de configuración de API mejorado */
-.config-api-btn {
-  background: linear-gradient(135deg, #fbbc04 0%, #ff9800 100%);
-  color: #1a1a1a;
-  border: none;
   padding: 16px 32px;
-  border-radius: 12px;
+  border-radius: 16px;
   font-size: 16px;
   font-weight: 600;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   width: 100%;
   box-shadow: 
-    0 4px 16px rgba(251, 188, 4, 0.3),
-    0 2px 8px rgba(0, 0, 0, 0.1);
+    0 8px 32px rgba(234, 67, 53, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.3px;
+}
+
+.disconnect-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
+}
+
+.disconnect-btn::after {
+  content: '🔓';
+  font-size: 18px;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+.disconnect-btn:hover {
+  background: linear-gradient(135deg, #c62828 0%, #b71c1c 50%, #8e0000 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 12px 48px rgba(234, 67, 53, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.disconnect-btn:hover::before {
+  left: 100%;
+}
+
+.disconnect-btn:hover::after {
+  transform: rotate(-10deg) scale(1.1);
+}
+
+.disconnect-btn:active {
+  transform: translateY(-1px) scale(1.01);
+  transition: all 0.1s ease;
+}
+
+.disconnect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.disconnect-btn:disabled::after {
+  content: '⏳';
+  transform: none;
+  animation: none;
+}
+
+.disconnect-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Botón de configuración de API mejorado */
+.config-api-btn {
+  background: linear-gradient(135deg, #fbbc04 0%, #ff9800 50%, #f57c00 100%);
+  color: #1a1a1a;
+  border: none;
+  padding: 18px 40px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  width: 100%;
+  box-shadow: 
+    0 8px 32px rgba(251, 188, 4, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
 }
 
 .config-api-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.config-api-btn::after {
   content: '⚙️';
   font-size: 18px;
+  animation: pulse 2.5s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.2));
 }
 
 .config-api-btn:hover {
-  background: linear-gradient(135deg, #e0a800 0%, #f57c00 100%);
-  transform: translateY(-2px) scale(1.01);
+  background: linear-gradient(135deg, #e0a800 0%, #f57c00 50%, #ef6c00 100%);
+  transform: translateY(-4px) scale(1.02);
   box-shadow: 
-    0 6px 20px rgba(251, 188, 4, 0.4),
-    0 3px 12px rgba(0, 0, 0, 0.15);
+    0 12px 48px rgba(251, 188, 4, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #0d1117;
 }
 
-/* Animación pulse para el ícono */
+.config-api-btn:hover::before {
+  left: 100%;
+}
+
+.config-api-btn:active {
+  transform: translateY(-2px) scale(1.01);
+  transition: all 0.1s ease;
+}
+
+/* Animaciones personalizadas */
+@keyframes sparkle {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg); 
+    opacity: 1;
+  }
+  25% { 
+    transform: scale(1.2) rotate(90deg); 
+    opacity: 0.8;
+  }
+  50% { 
+    transform: scale(1.1) rotate(180deg); 
+    opacity: 1;
+  }
+  75% { 
+    transform: scale(1.3) rotate(270deg); 
+    opacity: 0.9;
+  }
+}
+
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.15); 
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Efectos de hover mejorados para Material Design */
+.google-calendar-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 
+    0 24px 80px rgba(0, 0, 0, 0.12),
+    0 16px 40px rgba(0, 0, 0, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.google-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 30%, #fbbc04 60%, #ea4335 100%);
+  color: white;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.google-calendar-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  animation: shimmer 3s infinite linear;
+}
+
+.google-calendar-header h3 {
+  margin: 0;
+  font-size: 1.4em;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 /* Botones de la configuración de API */
 .save-api-btn {
-  background: linear-gradient(135deg, #4285f4 0%, #1976d2 100%);
+  background: linear-gradient(135deg, #4285f4 0%, #1976d2 50%, #1565c0 100%);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
+  padding: 14px 28px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 
+    0 4px 16px rgba(66, 133, 244, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+.save-api-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
 }
 
 .save-api-btn:hover {
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 50%, #0d47a1 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 8px 24px rgba(66, 133, 244, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.save-api-btn:hover::before {
+  left: 100%;
 }
 
 .cancel-api-btn {
-  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #d5d5d5 100%);
   color: #424242;
   border: 1px solid #ccc;
-  padding: 12px 24px;
-  border-radius: 8px;
+  padding: 14px 28px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.3s ease;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.cancel-api-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(66, 133, 244, 0.1), transparent);
+  transition: left 0.5s ease;
 }
 
 .cancel-api-btn:hover {
-  background: linear-gradient(135deg, #e0e0e0 0%, #d5d5d5 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #e0e0e0 0%, #d5d5d5 50%, #bdbdbd 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #1a1a1a;
+}
+
+.cancel-api-btn:hover::before {
+  left: 100%;
 }
 
 /* Sección de información */
