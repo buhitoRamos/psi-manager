@@ -151,6 +151,7 @@ function Patients() {
         // Consultar la API REST de Supabase para obtener pacientes con información de deuda y próxima cita
         setLoadingMessage('Cargando lista de pacientes...');
         const patientsData = await supabaseRest.getPatientsWithNextAppointment(extractedUserId);
+
         // eslint-disable-next-line no-console
         console.debug('[Patients] getPatientsWithNextAppointment result:', patientsData);
         
@@ -352,9 +353,12 @@ function Patients() {
       const lastName = appointmentForm.patient.last_name || '';
       patientName = `${firstName} ${lastName}`.trim() || 'el paciente';
     }
-
+const openModal = appointmentData.actualAppointments.length > 0
+if (!openModal) {
+      confirmRecurringAppointments(true)
+    }
     setRecurringConfirmModal({
-      isOpen: true,
+      isOpen: openModal,
       appointmentData,
       appointmentWithUserId,
       patientName, // Agregar el nombre calculado al estado
@@ -366,10 +370,16 @@ function Patients() {
     const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
     setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
+    // Fix: Ensure appointmentData.patient_id is available
+    const safeAppointmentData = appointmentData || {};
+    if (!safeAppointmentData.patient_id && appointmentWithUserId && appointmentWithUserId.patient_id) {
+      safeAppointmentData.patient_id = appointmentWithUserId.patient_id;
+    }
+
     try {
       setAppointmentLoading(true);
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
-      
+
       // Validar que result existe y tiene las propiedades esperadas
       if (!result) {
         throw new Error('No se recibió respuesta del servidor');
@@ -377,8 +387,8 @@ function Patients() {
 
       const createdCount = result.createdCount || 0;
       const deletedCount = result.deletedCount || 0;
-      const frequency = appointmentData?.frequency || 'recurrentes';
-      
+      const frequency = safeAppointmentData?.frequency || 'recurrentes';
+
       // Usar el nombre del paciente ya calculado
       const finalPatientName = patientName || 'el paciente';
 
@@ -393,12 +403,12 @@ function Patients() {
         if (isAuthorized() && result.appointments && result.appointments.length > 0) {
           // DEBUGGING: Verificar datos del paciente para turnos recurrentes
           console.log('🔍 [confirmRecurringAppointments] patientData:', patientData);
-          
+
           const calendarResult = await createRecurringCalendarEvents(
-            result.appointments, 
+            result.appointments,
             patientData  // Usar los datos completos del paciente
           );
-          
+
           if (calendarResult.success) {
             message += ` y sincronizados con Google Calendar`;
             if (calendarResult.errors > 0) {
@@ -482,7 +492,13 @@ function Patients() {
       // Si es recurrente y no es única, usar la función de turnos recurrentes
       if (isRecurring && appointmentData.frequency !== 'unica') {
         console.log('Creating recurring appointments...');
-        // Mostrar modal de confirmación para turnos recurrentes
+        // Mostrar modal de confirmación para turnos recurrentes aca
+        const actualAppointments = (await supabaseRest.getAppointmentsByUserId(appointmentWithUserId.user_id))
+          .filter(appointment => appointment.patient_id === appointmentData.patient_id);
+        appointmentData = {
+          ...appointmentData,
+          actualAppointments
+        }
         handleRecurringConfirmation(appointmentData, appointmentWithUserId);
         return; // Salir aquí, la confirmación se maneja en el modal
         
