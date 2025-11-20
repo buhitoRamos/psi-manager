@@ -13,7 +13,7 @@ import './patients.css';
 // Función para extraer el user_id del token
 function extractUserIdFromToken(token) {
   if (!token) return null;
-  
+
   // El token tiene formato: "user-{user_id}-{timestamp}"
   const parts = token.split('-');
   if (parts.length >= 2 && parts[0] === 'user') {
@@ -44,14 +44,14 @@ function formatCurrency(amount) {
 // Función para formatear fecha de próxima cita
 function formatNextAppointmentDate(dateString) {
   if (!dateString) return 'Sin turnos programados';
-  
+
   try {
     const appointmentDate = new Date(dateString);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     const appointmentDay = new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate());
-    
+
     // Determinar si es hoy, mañana o una fecha específica
     let datePrefix = '';
     if (appointmentDay.getTime() === today.getTime()) {
@@ -65,14 +65,14 @@ function formatNextAppointmentDate(dateString) {
         month: 'short'
       });
     }
-    
+
     // Formatear hora
     const timeString = appointmentDate.toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     });
-    
+
     return `${datePrefix} ${timeString}`;
   } catch (error) {
     return 'Fecha inválida';
@@ -130,7 +130,7 @@ function Patients() {
       setLoading(true);
       setError(null);
       setLoadingMessage('Inicializando...');
-      
+
       try {
         // Obtener el token del localStorage
         setLoadingMessage('Verificando autenticación...');
@@ -147,14 +147,14 @@ function Patients() {
         }
 
         setUserId(extractedUserId);
-        
+
         // Consultar la API REST de Supabase para obtener pacientes con información de deuda y próxima cita
         setLoadingMessage('Cargando lista de pacientes...');
         const patientsData = await supabaseRest.getPatientsWithNextAppointment(extractedUserId);
 
         // eslint-disable-next-line no-console
         console.debug('[Patients] getPatientsWithNextAppointment result:', patientsData);
-        
+
         setLoadingMessage('Finalizando carga...');
         setPatients(patientsData || []);
 
@@ -167,7 +167,7 @@ function Patients() {
     }
 
     loadPatients();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, recurringConfirmModal]);
 
   const togglePatientDetails = (patientId) => {
     setExpandedPatient(expandedPatient === patientId ? null : patientId);
@@ -286,11 +286,11 @@ function Patients() {
 
     const deletePromise = async () => {
       let calendarResult = null;
-      
+
       // Primero intentar eliminar eventos de Google Calendar
       try {
         const { isAuthorized, deletePatientCalendarEvents } = await import('../../lib/googleCalendar');
-        
+
         if (isAuthorized()) {
           console.log('🗑️ Eliminando eventos de Google Calendar para:', patient.name);
           calendarResult = await deletePatientCalendarEvents(patient);
@@ -301,7 +301,7 @@ function Patients() {
         console.warn('Warning: Could not delete Google Calendar events:', calendarError);
         // Continuar aunque falle la eliminación del calendario
       }
-      
+
       // Eliminar todos los turnos pendientes del paciente
       try {
         await supabaseRest.deletePendingAppointmentsByPatient(patient.id, userId);
@@ -309,11 +309,11 @@ function Patients() {
         console.warn('Warning: Could not delete appointments:', appointmentError);
         // Continuar con la eliminación del paciente aunque fallen los turnos
       }
-      
+
       // Luego eliminar el paciente
       await supabaseRest.deletePatient(patient.id, userId);
       setPatients(patients.filter(p => p.id !== patient.id));
-      
+
       return { patient, calendarResult };
     };
 
@@ -324,11 +324,11 @@ function Patients() {
         success: (data) => {
           const { patient, calendarResult } = data;
           let message = `🗑️ ${patient.name || 'Paciente'} y turnos eliminados correctamente`;
-          
+
           if (calendarResult && calendarResult.deleted > 0) {
             message += ` (${calendarResult.deleted} eventos del calendario eliminados)`;
           }
-          
+
           return message;
         },
         error: (err) => `❌ Error al eliminar: ${err.message}`,
@@ -353,29 +353,37 @@ function Patients() {
       const lastName = appointmentForm.patient.last_name || '';
       patientName = `${firstName} ${lastName}`.trim() || 'el paciente';
     }
-const openModal = appointmentData.actualAppointments.length > 0
-if (!openModal) {
-      confirmRecurringAppointments(true)
+    const openModal = !!appointmentData.actualAppointments.length;
+
+    // Ensure appointmentData and appointmentWithUserId are always valid objects with required fields
+    let safeAppointmentData = appointmentData || {};
+    let safeAppointmentWithUserId = appointmentWithUserId || {};
+    // patient_id
+    let patientId = safeAppointmentData.patient_id || appointmentForm?.patient?.id || safeAppointmentWithUserId.patient_id;
+    if (patientId) {
+      safeAppointmentData = { ...safeAppointmentData, patient_id: patientId };
+      safeAppointmentWithUserId = { ...safeAppointmentWithUserId, patient_id: patientId };
     }
-    setRecurringConfirmModal({
+
+    const modal = {
       isOpen: openModal,
-      appointmentData,
-      appointmentWithUserId,
+      appointmentData: safeAppointmentData,
+      appointmentWithUserId: safeAppointmentWithUserId,
       patientName, // Agregar el nombre calculado al estado
-      patientData: appointmentForm?.patient // Agregar datos completos del paciente
+      patientData: appointmentForm?.patient
+    }
+
+    setRecurringConfirmModal({
+      ...modal
     });
+    if (!openModal) {
+      createRecurringAppointments(modal);
+    }
   };
 
-  const confirmRecurringAppointments = async (shouldClearExisting) => {
-    const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
-    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
-    // Fix: Ensure appointmentData.patient_id is available
-    const safeAppointmentData = appointmentData || {};
-    if (!safeAppointmentData.patient_id && appointmentWithUserId && appointmentWithUserId.patient_id) {
-      safeAppointmentData.patient_id = appointmentWithUserId.patient_id;
-    }
-
+  const createRecurringAppointments = async (modal) => {
+    const { appointmentWithUserId, safeAppointmentData, shouldClearExisting, patientName, patientData } = modal;
     try {
       setAppointmentLoading(true);
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
@@ -451,6 +459,19 @@ if (!openModal) {
     }
   };
 
+  const confirmRecurringAppointments = async (shouldClearExisting) => {
+    const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
+
+    // Fix: Ensure appointmentData.patient_id is available
+    const safeAppointmentData = appointmentData || {};
+    if (!safeAppointmentData.patient_id && appointmentWithUserId && appointmentWithUserId.patient_id) {
+      safeAppointmentData.patient_id = appointmentWithUserId.patient_id;
+    }
+
+    createRecurringAppointments(recurringConfirmModal);
+  };
+
   const cancelRecurringConfirmation = () => {
     setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
   };
@@ -472,7 +493,7 @@ if (!openModal) {
   const handleSaveAppointment = async (appointmentData, isRecurring = false) => {
     try {
       setAppointmentLoading(true);
-      
+
       const userId = extractUserIdFromToken(token);
       if (!userId) {
         toast.error('Error de autenticación');
@@ -486,26 +507,38 @@ if (!openModal) {
       };
 
       console.log('Saving appointment:', appointmentWithUserId);
-      
+
       let result;
-      
+
       // Si es recurrente y no es única, usar la función de turnos recurrentes
       if (isRecurring && appointmentData.frequency !== 'unica') {
         console.log('Creating recurring appointments...');
         // Mostrar modal de confirmación para turnos recurrentes aca
+        // Ensure patient_id is present in appointmentWithUserId and appointmentData
+        let patientId = appointmentData?.patient_id || appointmentForm?.patient?.id || appointmentWithUserId?.patient_id;
+        if (!patientId) {
+          toast.error('No se pudo determinar el paciente para los turnos recurrentes.');
+          return;
+        }
+        // Ensure appointmentData is always an object with required fields
+        appointmentData = {
+          ...(appointmentData || {}),
+          patient_id: patientId
+        };
+        appointmentWithUserId.patient_id = patientId;
         const actualAppointments = (await supabaseRest.getAppointmentsByUserId(appointmentWithUserId.user_id))
-          .filter(appointment => appointment.patient_id === appointmentData.patient_id);
+          .filter(appointment => appointment.patient_id === patientId);
         appointmentData = {
           ...appointmentData,
           actualAppointments
-        }
+        };
         handleRecurringConfirmation(appointmentData, appointmentWithUserId);
         return; // Salir aquí, la confirmación se maneja en el modal
-        
+
       } else {
         // Llamar al servicio para crear una sola cita
         result = await supabaseRest.createAppointment(appointmentWithUserId);
-        
+
         // Intentar crear evento en Google Calendar si está autorizado
         setCalendarLoading(true);
         try {
@@ -513,7 +546,7 @@ if (!openModal) {
             // DEBUGGING: Verificar datos del paciente
             console.log('🔍 [handleSaveAppointment] appointmentForm.patient:', appointmentForm.patient);
             console.log('🔍 [handleSaveAppointment] appointmentWithUserId:', appointmentWithUserId);
-            
+
             await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
             toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar`);
           } else {
@@ -527,14 +560,14 @@ if (!openModal) {
           setCalendarLoading(false);
         }
       }
-      
+
       // Recargar pacientes con información de deuda y próxima cita actualizada
       const updatedPatients = await supabaseRest.getPatientsWithNextAppointment(userId);
       setPatients(updatedPatients || []);
-      
+
       // Cerrar el formulario
       handleCloseAppointment();
-      
+
       return result;
     } catch (error) {
       console.error('Error saving appointment:', error);
@@ -548,10 +581,10 @@ if (!openModal) {
   // Filtrar pacientes por nombre o apellido (ignorando acentos)
   const filteredPatients = patients.filter(patient => {
     if (!searchTerm) return true;
-    
+
     // Normalizar término de búsqueda (sin acentos)
     const searchNormalized = normalizeText(searchTerm);
-    
+
     // Normalizar campos del paciente (sin acentos)
     const name = normalizeText(patient.name || '');
     const lastName = normalizeText(patient.last_name || '');
@@ -559,13 +592,13 @@ if (!openModal) {
     const health_insurance = normalizeText(patient.health_insurance || '');
     const tel = normalizeText(patient.tel || '');
     const email = normalizeText(patient.email || '');
-    
-    return name.includes(searchNormalized) || 
-           lastName.includes(searchNormalized) || 
-           fullName.includes(searchNormalized) ||
-           health_insurance.includes(searchNormalized) ||
-           tel.includes(searchNormalized) ||
-           email.includes(searchNormalized);
+
+    return name.includes(searchNormalized) ||
+      lastName.includes(searchNormalized) ||
+      fullName.includes(searchNormalized) ||
+      health_insurance.includes(searchNormalized) ||
+      tel.includes(searchNormalized) ||
+      email.includes(searchNormalized);
   });
 
   if (!isAuthenticated) {
@@ -578,7 +611,7 @@ if (!openModal) {
 
   if (loading) {
     return (
-      <Loading 
+      <Loading
         message={loadingMessage}
         size="large"
         overlay={true}
@@ -592,8 +625,8 @@ if (!openModal) {
         <div className="patients-error">
           <h3>Error</h3>
           <p>{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="patients-retry-btn"
           >
             Reintentar
@@ -618,15 +651,15 @@ if (!openModal) {
           </button>
         </div>
         <p className="patients-user-info">Usuario ID: {userId}</p>
-        
+
         {/* Configuración de Google Calendar */}
         {showGoogleCalendarSettings && (
-          <GoogleCalendarSettings 
+          <GoogleCalendarSettings
             isOpen={showGoogleCalendarSettings}
             onClose={() => setShowGoogleCalendarSettings(false)}
           />
         )}
-        
+
         {/* Campo de búsqueda */}
         <div className="patients-search">
           <input
@@ -646,11 +679,11 @@ if (!openModal) {
             </button>
           )}
         </div>
-        
+
         <p className="patients-count">
-          {patients.length === 0 
-            ? 'No hay pacientes registrados' 
-            : searchTerm 
+          {patients.length === 0
+            ? 'No hay pacientes registrados'
+            : searchTerm
               ? `${filteredPatients.length} de ${patients.length} paciente${patients.length !== 1 ? 's' : ''}`
               : `${patients.length} paciente${patients.length !== 1 ? 's' : ''} encontrado${patients.length !== 1 ? 's' : ''}`
           }
@@ -847,7 +880,7 @@ if (!openModal) {
                           <h3 className="patient-name">{patient.name || 'Sin nombre'}</h3>
                           {patient.last_name && <p className="patient-lastname">{patient.last_name}</p>}
                         </div>
-                        <button 
+                        <button
                           className="appointment-btn"
                           onClick={() => handleOpenAppointment(patient)}
                           title="Programar turno"
@@ -855,7 +888,7 @@ if (!openModal) {
                           📅
                         </button>
                       </div>
-                      
+
                       {/* Indicador de deuda */}
                       {patient.hasDebt && patient.debt > 0 && (
                         <div className="patient-debt-alert">
@@ -865,7 +898,7 @@ if (!openModal) {
                           </span>
                         </div>
                       )}
-                      
+
                       {/* Mostrar resumen financiero cuando está expandido */}
                       {expandedPatient === patient.id && (
                         <div className="patient-financial-summary">
@@ -885,18 +918,18 @@ if (!openModal) {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Próxima cita (donde antes estaba el teléfono) */}
                       <div className="patient-next-appointment">
                         <span className="next-appointment-icon">📅</span>
                         <span className="next-appointment-text">
-                          {patient.nextAppointment 
+                          {patient.nextAppointment
                             ? formatNextAppointmentDate(patient.nextAppointment.date)
                             : 'Sin turnos programados'
                           }
                         </span>
                       </div>
-                      
+
                       {expandedPatient === patient.id && (
                         <div className="patient-details">
                           {patient.tel && <p className="patient-phone">📞 {patient.tel}</p>}
@@ -911,7 +944,7 @@ if (!openModal) {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Botón Ver siempre visible */}
                     <div className="patient-actions-preview">
                       <button
@@ -955,9 +988,9 @@ if (!openModal) {
       ) : (
         <div className="patients-empty">
           <p>No hay pacientes registrados para este usuario.</p>
-         {
-          addPatient('Primer Paciente')
-         }
+          {
+            addPatient('Primer Paciente')
+          }
         </div>
       )}
 
@@ -990,19 +1023,19 @@ if (!openModal) {
               </div>
             </div>
             <div className="appointment-confirm-buttons">
-              <button 
+              <button
                 className="confirm-replace-btn"
                 onClick={() => confirmRecurringAppointments(true)}
               >
                 Reemplazar
               </button>
-              <button 
+              <button
                 className="confirm-keep-btn"
                 onClick={() => confirmRecurringAppointments(false)}
               >
                 Mantener
               </button>
-              <button 
+              <button
                 className="confirm-cancel-btn"
                 onClick={cancelRecurringConfirmation}
               >
@@ -1023,7 +1056,7 @@ if (!openModal) {
 
       {/* Loading Overlays */}
       {calendarLoading && (
-        <Loading 
+        <Loading
           message="Sincronizando con Google Calendar..."
           size="large"
           overlay={true}
@@ -1031,7 +1064,7 @@ if (!openModal) {
       )}
 
       {appointmentLoading && (
-        <Loading 
+        <Loading
           message="Creando turnos..."
           size="large"
           overlay={true}
