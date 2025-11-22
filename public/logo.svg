@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="32" height="32" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Símbolo Psi (Ψ) simple en negro -->
-  <text x="50" y="150" 
-        font-family="Arial, sans-serif" 
-        font-size="160" 
-        fill="black"
-        style="font-weight: bold;">
-    Ψ
-  </text>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="95" fill="#e3f6fd"/>
+  <text x="100" y="135" text-anchor="middle" font-size="120" font-family="serif" fill="#357ABD" font-weight="bold">Ψ</text>
 </svg>
