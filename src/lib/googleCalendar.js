@@ -1,9 +1,18 @@
+
+import { GOOGLE_CALENDAR_CONFIG, DEBUG_CONFIG } from '../config/appConfig.js';
+// Utilidad para verificar si la API de Google está lista
+export function isGoogleApiReady() {
+  return (
+    typeof window !== 'undefined' &&
+    window.gapi &&
+    window.gapi.client &&
+    typeof window.gapi.client.init === 'function'
+  );
+}
 /**
  * Google Calendar Integration - Versión con API Real
  * Usa configuración centralizada desde appConfig.js
  */
-
-import { GOOGLE_CALENDAR_CONFIG, DEBUG_CONFIG } from '../config/appConfig.js';
 
 let isGoogleLoaded = false;
 let currentUser = null;
@@ -27,7 +36,11 @@ const restoreSessionFromStorage = () => {
       }
     }
   } catch (error) {
-    console.error('Error restaurando sesión desde localStorage:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('Error restaurando sesión desde localStorage: ' + (error.message || error));
+    } else {
+      console.error('Error restaurando sesión desde localStorage:', error);
+    }
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   }
   return false;
@@ -42,7 +55,11 @@ const saveSessionToStorage = (accessToken, userInfo) => {
       timestamp: Date.now()
     }));
   } catch (error) {
-    console.error('Error guardando sesión en localStorage:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('Error guardando sesión en localStorage: ' + (error.message || error));
+    } else {
+      console.error('Error guardando sesión en localStorage:', error);
+    }
   }
 };
 
@@ -103,13 +120,21 @@ export const initializeGoogleAPI = async (apiKey, clientId) => {
           
           resolve(window.gapi);
         } catch (error) {
-          console.error('❌ Error inicializando Google API:', error);
+          if (typeof window !== 'undefined' && window.toast) {
+            window.toast.error('❌ Error inicializando Google API: ' + (error.message || error));
+          } else {
+            console.error('❌ Error inicializando Google API:', error);
+          }
           reject(error);
         }
       });
     });
   } catch (error) {
-    console.error('❌ Error loading Google API:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ Error loading Google API: ' + (error.message || error));
+    } else {
+      console.error('❌ Error loading Google API:', error);
+    }
     throw error;
   }
 };
@@ -143,7 +168,11 @@ export const authorizeGoogleCalendar = async () => {
 
     // Verificar que Google Identity Services esté disponible
     if (!window.google || !window.google.accounts) {
-      console.error('❌ Google Identity Services no está disponible');
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.error('❌ Google Identity Services no está disponible');
+      } else {
+        console.error('❌ Google Identity Services no está disponible');
+      }
       throw new Error('Google Identity Services no se cargó correctamente. Intenta recargar la página.');
     }
 
@@ -162,7 +191,11 @@ export const authorizeGoogleCalendar = async () => {
             }
             
             if (response.error) {
-              console.error('❌ OAuth error:', response);
+              if (typeof window !== 'undefined' && window.toast) {
+                window.toast.error('❌ OAuth error: ' + (response.error || 'Error desconocido'));
+              } else {
+                console.error('❌ OAuth error:', response);
+              }
               let errorMessage = 'Error en la autorización';
               
               switch (response.error) {
@@ -190,7 +223,11 @@ export const authorizeGoogleCalendar = async () => {
             }
             
             if (!response.access_token) {
-              console.error('❌ No se recibió access_token');
+              if (typeof window !== 'undefined' && window.toast) {
+                window.toast.error('❌ No se recibió access_token');
+              } else {
+                console.error('❌ No se recibió access_token');
+              }
               resolve({
                 success: false,
                 error: 'No se pudo obtener el token de acceso'
@@ -246,7 +283,11 @@ export const authorizeGoogleCalendar = async () => {
         }, 30000); // 30 segundos
         
       } catch (clientError) {
-        console.error('❌ Error creando cliente OAuth:', clientError);
+        if (typeof window !== 'undefined' && window.toast) {
+          window.toast.error('❌ Error creando cliente OAuth: ' + (clientError.message || clientError));
+        } else {
+          console.error('❌ Error creando cliente OAuth:', clientError);
+        }
         resolve({
           success: false,
           error: `Error inicializando cliente OAuth: ${clientError.message}`
@@ -254,7 +295,11 @@ export const authorizeGoogleCalendar = async () => {
       }
     });
   } catch (error) {
-    console.error('❌ Error en autorización:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ Error en autorización: ' + (error.message || error));
+    } else {
+      console.error('❌ Error en autorización:', error);
+    }
     throw error;
   }
 };
@@ -309,7 +354,11 @@ export const getCurrentUser = () => {
       }
     }
   } catch (error) {
-    console.error('Error obteniendo usuario desde localStorage:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('Error obteniendo usuario desde localStorage: ' + (error.message || error));
+    } else {
+      console.error('Error obteniendo usuario desde localStorage:', error);
+    }
   }
   
   return null;
@@ -329,6 +378,16 @@ export const createCalendarEvent = async (appointmentData, patientData) => {
   try {
     if (!isAuthorized()) {
       throw new Error('Debes autenticarte con Google primero');
+    }
+
+    // Verificar que la API de Google esté lista
+    if (
+      !window.gapi ||
+      !window.gapi.client ||
+      !window.gapi.client.calendar ||
+      typeof window.gapi.client.calendar.events === 'undefined'
+    ) {
+      throw new Error('La API de Google Calendar no está lista. Por favor, vuelve a conectar o recarga la página.');
     }
 
     // ===== DEBUGGING: Revisar datos recibidos =====
@@ -374,7 +433,15 @@ export const createCalendarEvent = async (appointmentData, patientData) => {
       eventUrl: response.result.htmlLink
     };
   } catch (error) {
-    console.error('❌ Error al crear evento:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ No se pudo conectar con Google Calendar: ' + (error.message || error));
+    } else {
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.error('❌ No se pudo conectar con Google Calendar: ' + (error.message || error));
+      } else {
+        console.error('❌ No se pudo conectar con Google Calendar:', error);
+      }
+    }
     
     // Si hay error de permisos, crear enlace como fallback
     if (error.status === 403 || error.status === 401) {
@@ -444,7 +511,11 @@ export const createRecurringCalendarEvents = async (appointments, patientData) =
           
           resolve({ success: true, result, appointment, fallback: result.fallback || false });
         } catch (error) {
-          console.error('Error creating calendar event:', error);
+          if (typeof window !== 'undefined' && window.toast) {
+            window.toast.error('Error creando evento de Google Calendar: ' + (error.message || error));
+          } else {
+            console.error('Error creating calendar event:', error);
+          }
           resolve({ success: false, error: error.message, appointment, fallback: false });
         }
       });
@@ -616,7 +687,11 @@ export const findPatientEvents = async (patientData, appointments = []) => {
 
     return filteredEvents;
   } catch (error) {
-    console.error('❌ Error buscando eventos:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ Error buscando eventos: ' + (error.message || error));
+    } else {
+      console.error('❌ Error buscando eventos:', error);
+    }
     throw new Error(`No se pudieron buscar los eventos: ${error.message}`);
   }
 };
@@ -643,7 +718,11 @@ export const deleteCalendarEvent = async (eventId) => {
 
     return true;
   } catch (error) {
-    console.error(`❌ Error eliminando evento ${eventId}:`, error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error(`❌ Error eliminando evento ${eventId}: ` + (error.message || error));
+    } else {
+      console.error(`❌ Error eliminando evento ${eventId}:`, error);
+    }
     // Si el evento no existe, considerar como éxito
     if (error.status === 404 || error.status === 410) {
       if (DEBUG_CONFIG.enableConsoleLogging) {
@@ -719,7 +798,11 @@ export const deletePatientCalendarEvents = async (patientData, appointments = []
         // Pausa pequeña entre eliminaciones para evitar rate limiting
         await new Promise(resolve => setTimeout(resolve, 200));
       } catch (error) {
-        console.error(`❌ Error eliminando evento ${event.id}:`, error);
+        if (typeof window !== 'undefined' && window.toast) {
+          window.toast.error(`❌ Error eliminando evento ${event.id}: ` + (error.message || error));
+        } else {
+          console.error(`❌ Error eliminando evento ${event.id}:`, error);
+        }
         errors.push({
           eventId: event.id,
           summary: event.summary,
@@ -741,7 +824,11 @@ export const deletePatientCalendarEvents = async (patientData, appointments = []
       message: `Se eliminaron ${results.length} eventos del calendario${errors.length > 0 ? ` (${errors.length} errores)` : ''}`
     };
   } catch (error) {
-    console.error('❌ Error en eliminación masiva:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ Error en eliminación masiva: ' + (error.message || error));
+    } else {
+      console.error('❌ Error en eliminación masiva:', error);
+    }
     throw new Error(`No se pudieron eliminar los eventos: ${error.message}`);
   }
 };
@@ -839,7 +926,11 @@ export const deleteAppointmentCalendarEvents = async (appointments, patientData)
       message: `Se eliminaron ${results.length} eventos del calendario para ${patientName}`
     };
   } catch (error) {
-    console.error('❌ Error eliminando eventos específicos:', error);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.error('❌ Error eliminando eventos específicos: ' + (error.message || error));
+    } else {
+      console.error('❌ Error eliminando eventos específicos:', error);
+    }
     throw new Error(`No se pudieron eliminar los eventos: ${error.message}`);
   }
 };

@@ -166,12 +166,10 @@ BEGIN
   END IF;
 
   -- Eliminar turnos que coincidan con los criterios
-  -- Solo eliminar turnos futuros en estado 'en_espera' para evitar eliminar turnos ya realizados
+  -- Eliminar todos los turnos en estado 'en_espera' para este paciente y usuario
   DELETE FROM appointments 
   WHERE appointments.patient_id = patient_id_param 
     AND appointments.user_id = current_user_id
-    AND appointments.frequency = frequency_param
-    AND appointments.date >= start_date_param
     AND appointments.status = 'en_espera'
   RETURNING appointments.id INTO deleted_appointment_ids;
 

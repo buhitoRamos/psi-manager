@@ -9,6 +9,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
   const [isLoading, setIsLoading] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState('');
+  const [tokenExpired, setTokenExpired] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -26,23 +27,36 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
     setIsLoading(true);
     try {
       const { isAuthorized, getCurrentUser } = await import('../../lib/googleCalendar');
-      
       if (isAuthorized()) {
         const user = getCurrentUser();
         setIsConnected(true);
         setUserInfo(user);
-        
+        // Verificar expiración del token
+        let expired = false;
+        if (window.gapi && window.gapi.auth2) {
+          const authInstance = window.gapi.auth2.getAuthInstance();
+          const gUser = authInstance && authInstance.currentUser && authInstance.currentUser.get();
+          if (gUser && gUser.getAuthResponse().expires_at < Date.now() / 1000) {
+            expired = true;
+          }
+        }
+        setTokenExpired(expired);
+        if (expired) {
+          setError('La sesión de Google Calendar ha expirado. Por favor, vuelve a conectar.');
+        }
         if (DEBUG_CONFIG.enableConsoleLogging) {
-          console.log('🔄 Sesión de Google Calendar detectada:', user);
+          console.log('🔄 Sesión de Google Calendar detectada:', user, expired ? 'TOKEN EXPIRADO' : '');
         }
       } else {
         setIsConnected(false);
         setUserInfo(null);
+        setTokenExpired(false);
       }
     } catch (error) {
       console.error('Error checking connection:', error);
       setIsConnected(false);
       setUserInfo(null);
+      setTokenExpired(false);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +99,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
         }
         
         if (DEBUG_CONFIG.enableConsoleLogging) {
-          console.log('⚠️ Autorización no exitosa:', result.error);
+          toast.success('⚠️ Autorización no exitosa:', result.error);
         }
       }
     } catch (error) {
@@ -94,7 +108,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
       toast.error(errorMessage);
       
       if (DEBUG_CONFIG.enableConsoleLogging) {
-        console.error('❌ Error en conexión:', error);
+        toast.error('❌ Error en conexión:', error);
       }
     } finally {
       setIsLoading(false);
@@ -149,12 +163,21 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
 
           {isConnected ? (
             <div className="connected-section">
-              <div className="connection-status connected">
+              <div className={`connection-status connected${tokenExpired ? ' expired' : ''}`}>
                 <i className="fas fa-check-circle"></i>
-                <span>Conectado a Google Calendar</span>
+                <span>
+                  {tokenExpired ? 'Sesión expirada de Google Calendar' : 'Conectado a Google Calendar'}
+                </span>
               </div>
-              
-
+              {tokenExpired && (
+                <button 
+                  className="connect-btn"
+                  onClick={handleConnect}
+                  disabled={isLoading}
+                >
+                  Volver a conectar Google Calendar
+                </button>
+              )}
               <button 
                 className="disconnect-btn"
                 onClick={handleDisconnect}

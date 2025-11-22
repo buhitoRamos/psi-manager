@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
 import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
-import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized } from '../../lib/googleCalendar';
+import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized, isGoogleApiReady } from '../../lib/googleCalendar';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import GoogleCalendarSettings from '../GoogleCalendarSettings/GoogleCalendarSettings';
@@ -370,21 +370,22 @@ function Patients() {
       appointmentData: safeAppointmentData,
       appointmentWithUserId: safeAppointmentWithUserId,
       patientName, // Agregar el nombre calculado al estado
-      patientData: appointmentForm?.patient
+      patientData: appointmentForm?.patient,
     }
 
     setRecurringConfirmModal({
       ...modal
     });
     if (!openModal) {
-      createRecurringAppointments(modal);
+      createAppointments(modal);
     }
   };
 
 
-  const createRecurringAppointments = async (modal) => {
-    const { appointmentWithUserId, safeAppointmentData, shouldClearExisting, patientName, patientData } = modal;
+  const createAppointments = async (modal, shouldClearExisting = false) => {
+    const { appointmentWithUserId, safeAppointmentData, patientName, patientData } = modal;
     try {
+
       setAppointmentLoading(true);
       const result = await supabaseRest.createRecurringAppointments(appointmentWithUserId, shouldClearExisting);
 
@@ -408,7 +409,11 @@ function Patients() {
       // Intentar crear eventos en Google Calendar si está autorizado
       setCalendarLoading(true);
       try {
-        if (isAuthorized() && result.appointments && result.appointments.length > 0) {
+        const { isGoogleApiReady } = await import('../../lib/googleCalendar');
+        if (!isGoogleApiReady() && isAuthorized()) {
+          toast.error('Google Calendar no está listo. Por favor, vuelve a conectar.');
+          setShowGoogleCalendarSettings(true);
+        } else if (isAuthorized() && result.appointments && result.appointments.length > 0) {
           // DEBUGGING: Verificar datos del paciente para turnos recurrentes
           console.log('🔍 [confirmRecurringAppointments] patientData:', patientData);
 
@@ -459,7 +464,7 @@ function Patients() {
     }
   };
 
-  const confirmRecurringAppointments = async (shouldClearExisting) => {
+  const confirmRecurringAppointments = async (shouldClearExisting =  false) => {
     const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
     setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
@@ -468,8 +473,8 @@ function Patients() {
     if (!safeAppointmentData.patient_id && appointmentWithUserId && appointmentWithUserId.patient_id) {
       safeAppointmentData.patient_id = appointmentWithUserId.patient_id;
     }
-
-    createRecurringAppointments(recurringConfirmModal);
+debugger;
+    createAppointments(recurringConfirmModal, shouldClearExisting);
   };
 
   const cancelRecurringConfirmation = () => {
@@ -547,8 +552,28 @@ function Patients() {
             console.log('🔍 [handleSaveAppointment] appointmentForm.patient:', appointmentForm.patient);
             console.log('🔍 [handleSaveAppointment] appointmentWithUserId:', appointmentWithUserId);
 
-            await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
-            toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar`);
+            try {
+              await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
+              toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar`);
+            } catch (calendarError) {
+              // Si la API no está lista, intentar reconectar automáticamente
+              if (calendarError.message && calendarError.message.includes('no está lista')) {
+                try {
+                  const { initializeGoogleAPI, authorizeGoogleCalendar } = await import('../../lib/googleCalendar');
+                  await initializeGoogleAPI();
+                  await authorizeGoogleCalendar();
+                  // Reintentar crear el evento una vez
+                  await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
+                  toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar (tras reconexión)`);
+                } catch (reconnectError) {
+                  console.error('Error reintentando Google Calendar:', reconnectError);
+                  toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+                  toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${reconnectError.message}`);
+                }
+              } else {
+                throw calendarError;
+              }
+            }
           } else {
             toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
           }
