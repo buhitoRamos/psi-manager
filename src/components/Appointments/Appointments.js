@@ -7,6 +7,8 @@ import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import Loading from '../Loading/Loading';
 import './Appointments.css';
+import { createCalendarEvent } from '../../lib/googleCalendar';
+import { reconnectGoogleCalendar } from '../../lib/googleCalendarReconnect';
 
 // Función para extraer el user_id del token
 function extractUserIdFromToken(token) {
@@ -30,6 +32,35 @@ function normalizeText(text) {
 }
 
 function Appointments() {
+    // Estado para el acordeón de eliminación masiva
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  // Spinner state for recurring modal
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
+  // Modal for confirming what to do with existing pending recurring appointments
+  const [recurringConfirmModal, setRecurringConfirmModal] = useState({
+    isOpen: false,
+    appointmentData: null,
+    patient: null,
+    existingPending: [],
+  });
+  // Declaración de estados principales que se usan en useEffect
+  const [userId, setUserId] = useState(null);
+  const [patientsList, setPatientsList] = useState([]);
+
+  // Cargar pacientes para el selector al tener userId
+  useEffect(() => {
+    async function loadPatients() {
+      if (!userId) return;
+      try {
+        const patients = await supabaseRest.getPatientsByUserId(userId);
+        setPatientsList(Array.isArray(patients) ? patients : []);
+      } catch (err) {
+        toast.error('No se pudieron cargar los pacientes');
+        setPatientsList([]);
+      }
+    }
+    loadPatients();
+  }, [userId]);
   const { isAuthenticated, token } = useContext(AuthContext);
   const appointmentsUpdate = useAppointmentsUpdate();
   const [appointments, setAppointments] = useState([]);
@@ -38,9 +69,9 @@ function Appointments() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [userId, setUserId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectKey, setSelectKey] = useState(0); // Para resetear el select
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -261,35 +292,170 @@ function Appointments() {
     });
   };
 
-  // Función para guardar los cambios de la cita editada
-  const handleSaveEdit = async (appointmentData, shouldProcessPayment = false) => {
+  // Función para guardar los cambios de la cita editada o crear una nueva
+  const handleSaveEdit = async (appointmentData, shouldProcessPayment = false, addToCalendar = true) => {
     try {
-      const updatedAppointment = await supabaseRest.updateAppointment(
+      let updatedAppointment = null;
+      // Check for new recurring appointment creation
+      const isNewRecurring = !editingAppointment.appointment && appointmentData.frequency && appointmentData.frequency !== 'unica';
+      if (isNewRecurring) {
+        // Check for existing 'en_espera' recurring appointments for this patient
+        const existingPending = appointments.filter(apt =>
+          apt.patient_id === editingAppointment.patient.id &&
+          apt.status === 'en_espera' &&
+          apt.frequency && apt.frequency !== 'unica'
+        );
+        if (existingPending.length > 0) {
+          // Show modal to ask user what to do
+          setRecurringConfirmModal({
+            isOpen: true,
+            appointmentData,
+            patient: editingAppointment.patient,
+            existingPending
+          });
+          return; // Wait for user choice
+        }
+      }
+      // Normal flow (edit or create, or no existing to confirm)
+      await processSaveEdit(appointmentData, shouldProcessPayment, addToCalendar, false);
+    } catch (error) {
+      console.error('Error updating/creating appointment:', error);
+      toast.error('Error al guardar los turnos');
+      throw error;
+    }
+  };
+
+  // Helper to process save, with option to clear existing
+  const processSaveEdit = async (appointmentData, shouldProcessPayment, addToCalendar, shouldClearExisting) => {
+    let updatedAppointment = null;
+    const patient = recurringConfirmModal.patient || editingAppointment.patient;
+    if (!patient || !patient.id) {
+      toast.error('No se pudo determinar el paciente para el turno.');
+      return;
+    }
+    if (editingAppointment.appointment && editingAppointment.appointment.id) {
+      // Editar cita existente
+      updatedAppointment = await supabaseRest.updateAppointment(
         editingAppointment.appointment.id,
         appointmentData,
         userId
       );
-
-      // Procesar el pago si fue solicitado
       if (shouldProcessPayment) {
         await handleSessionPayment(editingAppointment.appointment);
       }
-
-      // Actualizar la lista de citas
-      setAppointments(appointments.map(apt => 
-        apt.id === editingAppointment.appointment.id 
+      setAppointments(appointments.map(apt =>
+        apt.id === editingAppointment.appointment.id
           ? { ...apt, ...updatedAppointment, patient_name: apt.patient_name, patient_last_name: apt.patient_last_name }
           : apt
       ));
-
       const paymentMessage = shouldProcessPayment ? ' y pago registrado' : '';
-      toast.success(`✅ Turno actualizado${paymentMessage} para ${editingAppointment.patient.name}`);
-      handleCloseEdit();
-    } catch (error) {
-      console.error('Error updating appointment:', error);
-      toast.error('Error al actualizar el turno');
-      throw error;
+      toast.success(`✅ Turno actualizado${paymentMessage} para ${patient.name}`);
+      if (addToCalendar) {
+        try {
+          await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
+          toast.success('Turno actualizado en Google Calendar');
+        } catch (calendarError) {
+          if (calendarError.message && calendarError.message.includes('no está lista')) {
+            const reconnected = await reconnectGoogleCalendar();
+            if (reconnected) {
+              try {
+                await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
+                toast.success('Turno actualizado en Google Calendar (tras reconexión)');
+              } catch (err2) {
+                toast.error('No se pudo actualizar en Google Calendar tras reconexión');
+              }
+            } else {
+              toast.error('No se pudo reconectar Google Calendar');
+            }
+          } else {
+            toast.error('No se pudo actualizar en Google Calendar');
+          }
+        }
+      }
+    } else {
+      // Crear nueva cita, usando el mismo RPC que en pacientes
+      try {
+        setAppointmentLoading(true);
+        const result = await supabaseRest.createRecurringAppointments(
+          {
+            ...appointmentData,
+            patient_id: patient.id,
+            user_id: userId
+          },
+          shouldClearExisting
+        );
+        if (!result) throw new Error('No se recibió respuesta del servidor');
+        const createdCount = result.createdCount || 0;
+        const deletedCount = result.deletedCount || 0;
+        const frequency = appointmentData?.frequency || 'recurrentes';
+        let message = `📅 ${createdCount} turnos ${frequency}es programados para ${patient.name}`;
+        if (deletedCount > 0) {
+          message += ` (${deletedCount} turnos anteriores reemplazados)`;
+        }
+        toast.success(message);
+        // Recargar lista de turnos
+        const refreshedAppointments = await supabaseRest.getAppointmentsByUserId(userId);
+        setAppointments(refreshedAppointments || []);
+        // Google Calendar: solo si addToCalendar está activo
+        if (addToCalendar && Array.isArray(result.appointments)) {
+          // Si se está reemplazando, eliminar primero los eventos viejos
+          if (shouldClearExisting) {
+            try {
+              const { deletePatientCalendarEvents, isAuthorized } = await import('../../lib/googleCalendar');
+              if (isAuthorized()) {
+                await deletePatientCalendarEvents(patient);
+                toast.success('Eventos viejos eliminados de Google Calendar');
+              }
+            } catch (err) {
+              toast.error('No se pudieron eliminar los eventos viejos de Google Calendar');
+            }
+          }
+          for (const apt of result.appointments) {
+            try {
+              await createCalendarEvent({ ...apt, user_id: userId }, patient);
+            } catch (calendarError) {
+              if (calendarError.message && calendarError.message.includes('no está lista')) {
+                const reconnected = await reconnectGoogleCalendar();
+                if (reconnected) {
+                  try {
+                    await createCalendarEvent({ ...apt, user_id: userId }, patient);
+                  } catch (err2) {
+                    toast.error('No se pudo agregar a Google Calendar tras reconexión');
+                  }
+                } else {
+                  toast.error('No se pudo reconectar Google Calendar');
+                }
+              } else {
+                toast.error('No se pudo agregar a Google Calendar');
+              }
+            }
+          }
+          toast.success('Turnos añadidos a Google Calendar');
+        }
+      } catch (error) {
+        console.error('Error creando turnos recurrentes:', error);
+        toast.error(error.message || 'Error al crear turnos recurrentes');
+      } finally {
+        setAppointmentLoading(false);
+      }
     }
+    handleCloseEdit();
+  };
+    // Spinner overlay for recurring modal (now handled by appointmentLoading state)
+  // Handlers for the recurring confirmation modal
+  const confirmRecurringAppointments = async (shouldClearExisting) => {
+    setAppointmentLoading(true);
+    await processSaveEdit(
+      recurringConfirmModal.appointmentData,
+      false,
+      true,
+      shouldClearExisting
+    );
+    setAppointmentLoading(false);
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, patient: null, existingPending: [] });
+  };
+  const cancelRecurringConfirmation = () => {
+    setRecurringConfirmModal({ isOpen: false, appointmentData: null, patient: null, existingPending: [] });
   };
 
   // Función para manejar la eliminación de una cita
@@ -388,26 +554,19 @@ function Appointments() {
       try {
         setCalendarLoading(true);
         let calendarResult = null;
-        
-        // Primero intentar eliminar eventos de Google Calendar
+        // Eliminar TODOS los eventos del paciente en Google Calendar (no solo los pendientes)
         try {
           const { isAuthorized, deletePatientCalendarEvents } = await import('../../lib/googleCalendar');
-          
           if (isAuthorized()) {
-            // Buscar información del paciente para Google Calendar
-            const patientAppointments = appointments.filter(apt => 
-              apt.patient_id === parseInt(patientId, 10) && apt.status === 'en_espera'
-            );
-            
-            if (patientAppointments.length > 0) {
-              const firstAppointment = patientAppointments[0];
+            // Buscar el primer turno del paciente para obtener nombre y apellido
+            const anyAppointment = appointments.find(apt => apt.patient_id === parseInt(patientId, 10));
+            if (anyAppointment) {
               const patientData = {
-                name: firstAppointment.patient_name,
-                last_name: firstAppointment.patient_last_name
+                name: anyAppointment.patient_name,
+                last_name: anyAppointment.patient_last_name
               };
-              
-              console.log('🗑️ Eliminando eventos de Google Calendar para:', patientName);
-              calendarResult = await deletePatientCalendarEvents(patientData, patientAppointments);
+              console.log('🗑️ Eliminando TODOS los eventos de Google Calendar para:', patientData);
+              calendarResult = await deletePatientCalendarEvents(patientData, []); // Array vacío: borra todos los eventos del paciente
             }
           } else {
             console.log('ℹ️ Google Calendar no está conectado, saltando eliminación de eventos');
@@ -416,19 +575,15 @@ function Appointments() {
           console.warn('Warning: Could not delete Google Calendar events:', calendarError);
           // Continuar aunque falle la eliminación del calendario
         }
-        
         // Eliminar turnos pendientes de la base de datos
         const result = await supabaseRest.deletePendingAppointmentsByPatient(patientId, userId);
-        
         // Filtrar los turnos eliminados del estado local inmediatamente
         const updatedAppointments = appointments.filter(apt => 
           !(apt.patient_id === parseInt(patientId, 10) && apt.status === 'en_espera')
         );
         setAppointments(updatedAppointments);
-        
         // Resetear el select del desplegable
         setSelectKey(prev => prev + 1);
-        
         // También podemos recargar todos los datos para asegurar sincronización
         setTimeout(async () => {
           try {
@@ -611,87 +766,171 @@ function Appointments() {
 
   return (
     <div className="appointments-container">
+            {/* Modal de confirmación para turnos recurrentes */}
+            {recurringConfirmModal.isOpen && (
+              <div className="appointment-confirm-overlay">
+                <div className="appointment-confirm-modal">
+                  <h3>Turnos Recurrentes</h3>
+                  <p>
+                    Ya existen turnos recurrentes en espera para {recurringConfirmModal.patient?.name || ''} {recurringConfirmModal.patient?.last_name || ''}.<br />
+                    ¿Desea reemplazarlos o mantenerlos?
+                  </p>
+                  <div className="confirmation-details">
+                    <div className="option">
+                      <strong>Reemplazar:</strong> Eliminará turnos recurrentes pendientes existentes y creará nuevos.
+                    </div>
+                    <div className="option">
+                      <strong>Mantener:</strong> Mantendrá los existentes y agregará los nuevos.
+                    </div>
+                  </div>
+                  <div className="appointment-confirm-buttons">
+                    <button
+                      className="confirm-replace-btn"
+                      onClick={() => confirmRecurringAppointments(true)}
+                    >
+                      Reemplazar
+                    </button>
+                    <button
+                      className="confirm-keep-btn"
+                      onClick={() => confirmRecurringAppointments(false)}
+                    >
+                      Mantener
+                    </button>
+                    <button
+                      className="confirm-cancel-btn"
+                      onClick={cancelRecurringConfirmation}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
       <div className="appointments-header">
         <h2>Turnos Programados</h2>
         <p className="appointments-user-info">Usuario ID: {userId}</p>
-        
-        {/* Controles de filtrado */}
-        <div className="appointments-controls">
-          <div className="appointments-search">
-            <input
-              type="text"
-              placeholder="Buscar por nombre del paciente u observación..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="appointments-search-input"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="appointments-search-clear"
-                title="Limpiar búsqueda"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          
-          <div className="appointments-filter">
+        {/* Selector y botón para agregar turno */}
+        <div className="appointments-add-section-modern">
+          <div className="appointments-patient-select-wrapper">
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="appointments-filter-select"
+              value={selectedPatient?.id || ''}
+              onChange={e => {
+                const patient = patientsList.find(p => p.id === parseInt(e.target.value, 10));
+                setSelectedPatient(patient || null);
+              }}
+              className="appointments-patient-select-modern"
             >
-              <option value="all">Todos los estados</option>
-              <option value="en_espera">📝 En Espera</option>
-              <option value="finalizado">✅ Finalizados</option>
-              <option value="cancelado">❌ Cancelados</option>
+              <option value="">Selecciona un paciente...</option>
+              {patientsList.map(patient => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.name} {patient.last_name}
+                </option>
+              ))}
             </select>
+            <span className="select-arrow">▼</span>
           </div>
-          
           <button
-            onClick={refreshAppointments}
-            className="appointments-refresh-btn"
-            title="Refrescar datos"
-            disabled={refreshing}
+            className="appointments-add-btn-modern"
+            onClick={() => {
+              if (!selectedPatient) {
+                toast.error('Selecciona un paciente');
+                return;
+              }
+              setEditingAppointment({
+                isOpen: true,
+                appointment: null,
+                patient: selectedPatient
+              });
+            }}
+            disabled={!selectedPatient}
           >
-            {refreshing ? '🔄' : '🔄'} {refreshing ? 'Actualizando...' : 'Actualizar'}
+            <span className="add-btn-icon">➕</span> <span>Agregar Turno</span>
           </button>
+        </div>
+        {/* Controles de filtrado */}
+        <div className="appointments-controls appointments-controls-row">
+          <div className="appointments-search-flex-group">
+            <div className="appointments-search-flex">
+              <input
+                type="text"
+                placeholder="Buscar por nombre del paciente u observación..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="appointments-search-input-modern"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="appointments-search-clear"
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="appointments-filter-select-wrapper">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="appointments-filter-select"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="en_espera">📝 En Espera</option>
+                <option value="finalizado">✅ Finalizados</option>
+                <option value="cancelado">❌ Cancelados</option>
+              </select>
+              <span className="select-arrow select-arrow-filter">▼</span>
+            </div>
+          </div>
         </div>
 
         {/* Sección de eliminación masiva de turnos pendientes */}
         {getPatientsWithPendingAppointments().length > 0 && (
-          <div className="appointments-bulk-delete">
-            <div className="bulk-delete-header">
-              <h3>🗑️ Eliminar Turnos Pendientes</h3>
-              <div className="bulk-delete-selector">
-                <select
-                  key={selectKey} // Esto resetea el select cuando cambien los datos
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [patientId, patientName] = e.target.value.split('|');
-                      handleBulkDeletePendingAppointments(patientId, patientName);
-                      e.target.value = ""; // Reset select
-                    }
-                  }}
-                  className="bulk-delete-select"
-                >
-                  <option value="">Seleccionar paciente para eliminar turnos pendientes...</option>
-                  {getPatientsWithPendingAppointments().map(patient => (
-                    <option 
-                      key={patient.id} 
-                      value={`${patient.id}|${patient.name}`}
-                    >
-                      {patient.name} ({patient.pendingCount} turno{patient.pendingCount !== 1 ? 's' : ''} pendiente{patient.pendingCount !== 1 ? 's' : ''})
-                    </option>
-                  ))}
-                </select>
+          <div className={`appointments-bulk-delete${bulkDeleteOpen ? ' open' : ''}`}>
+            <button
+              className="bulk-delete-accordion-toggle"
+              onClick={() => setBulkDeleteOpen(open => !open)}
+              aria-expanded={bulkDeleteOpen}
+              aria-controls="bulk-delete-content"
+            >
+              <span className={`chevron${bulkDeleteOpen ? ' open' : ''}`}>▼</span>
+              <span>Eliminar Turnos Pendientes</span>
+            </button>
+            <div
+              id="bulk-delete-content"
+              className="bulk-delete-accordion-content"
+              style={{ display: bulkDeleteOpen ? 'block' : 'none' }}
+            >
+              <div className="bulk-delete-header">
+                <div className="bulk-delete-selector">
+                  <select
+                    key={selectKey} // Esto resetea el select cuando cambien los datos
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [patientId, patientName] = e.target.value.split('|');
+                        handleBulkDeletePendingAppointments(patientId, patientName);
+                        e.target.value = ""; // Reset select
+                      }
+                    }}
+                    className="bulk-delete-select"
+                  >
+                    <option value="">Seleccionar paciente para eliminar turnos pendientes...</option>
+                    {getPatientsWithPendingAppointments().map(patient => (
+                      <option 
+                        key={patient.id} 
+                        value={`${patient.id}|${patient.name}`}
+                      >
+                        {patient.name} ({patient.pendingCount} turno{patient.pendingCount !== 1 ? 's' : ''} pendiente{patient.pendingCount !== 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+              <p className="bulk-delete-description">
+                💡 Solo se eliminarán turnos en estado "En Espera". Los turnos finalizados o cancelados no se verán afectados.
+              </p>
             </div>
-            <p className="bulk-delete-description">
-              💡 Solo se eliminarán turnos en estado "En Espera". Los turnos finalizados o cancelados no se verán afectados.
-            </p>
           </div>
         )}
         
@@ -819,7 +1058,54 @@ function Appointments() {
         type="danger"
       />
 
-      {/* Modal de confirmación para eliminación masiva */}
+      {/* Modal de confirmación para turnos recurrentes */}
+      {recurringConfirmModal.isOpen && (
+        <div className="appointment-confirm-overlay">
+          <div className="appointment-confirm-modal">
+            <h3>Turnos Recurrentes</h3>
+            <p>
+              Ya existen turnos recurrentes en espera para {recurringConfirmModal.patient?.name || ''} {recurringConfirmModal.patient?.last_name || ''}.<br />
+              ¿Desea reemplazarlos o mantenerlos?
+            </p>
+            <div className="confirmation-details">
+              <div className="option">
+                <strong>Reemplazar:</strong> Eliminará turnos recurrentes pendientes existentes y creará nuevos.
+              </div>
+              <div className="option">
+                <strong>Mantener:</strong> Mantendrá los existentes y agregará los nuevos.
+              </div>
+            </div>
+            <div className="appointment-confirm-buttons">
+              <button
+                className="confirm-replace-btn"
+                onClick={() => confirmRecurringAppointments(true)}
+                disabled={appointmentLoading}
+              >
+                {appointmentLoading ? 'Cargando...' : 'Reemplazar'}
+              </button>
+              <button
+                className="confirm-keep-btn"
+                onClick={() => confirmRecurringAppointments(false)}
+                disabled={appointmentLoading}
+              >
+                {appointmentLoading ? 'Cargando...' : 'Mantener'}
+              </button>
+              <button
+                className="confirm-cancel-btn"
+                onClick={cancelRecurringConfirmation}
+                disabled={appointmentLoading}
+              >
+                Cancelar
+              </button>
+            </div>
+            {appointmentLoading && (
+              <div className="appointment-loading-overlay">
+                <Loading message="Procesando..." size="medium" overlay={false} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <ConfirmModal
         isOpen={bulkDeleteModal.isOpen}
         onClose={() => setBulkDeleteModal({ isOpen: false, patientId: null, patientName: '' })}
@@ -844,6 +1130,8 @@ Esta acción no se puede deshacer.`}
         existingAppointment={editingAppointment.appointment}
         isPaid={editingAppointment.isPaid}
         onPaymentChange={editingAppointment.onPaymentChange}
+        addToCalendar={typeof editingAppointment.addToCalendar !== 'undefined' ? editingAppointment.addToCalendar : true}
+        onAddToCalendarChange={checked => setEditingAppointment(prev => ({ ...prev, addToCalendar: checked }))}
       />
 
       {/* Loading Overlay para operaciones de calendario */}

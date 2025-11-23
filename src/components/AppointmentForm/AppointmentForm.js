@@ -72,8 +72,16 @@ function AppointmentForm({
   patient, 
   existingAppointment = null, 
   isPaid = false, 
-  onPaymentChange = null 
+  onPaymentChange = null, 
+  addToCalendar = true, 
+  onAddToCalendarChange = null 
 }) {
+    // Checkbox para Google Calendar
+    const [localAddToCalendar, setLocalAddToCalendar] = useState(addToCalendar);
+
+    useEffect(() => {
+      setLocalAddToCalendar(addToCalendar);
+    }, [addToCalendar]);
   const [formData, setFormData] = useState({
     patient_id: patient?.id || '',
     date: '',
@@ -155,12 +163,9 @@ function AppointmentForm({
           amount: parseFloat(formData.amount),
           date: new Date(formData.date).toISOString()
         };
-        
         // Procesar el pago si el checkbox está marcado y no estaba pagado antes
-        // Si se marca el pago, se asume que el turno está finalizado/cancelado
         const shouldProcessPayment = localPaymentChecked && !isPaid && formData.amount > 0;
-        
-        await onSave(appointmentData, shouldProcessPayment);
+        await onSave(appointmentData, shouldProcessPayment, localAddToCalendar);
         onClose();
         return;
       }
@@ -174,16 +179,14 @@ function AppointmentForm({
           amount: parseFloat(formData.amount),
           date: new Date(formData.date).toISOString()
         };
-        await onSave(appointmentData);
+        await onSave(appointmentData, false, localAddToCalendar);
       } else {
         // Crear turnos recurrentes usando el backend
         const startDate = new Date(formData.date);
         const previewDates = generateRecurringDates(startDate, formData.frequency);
-        
         // Preparar mensaje de confirmación más detallado
         const dayName = getDayOfWeekName(startDate);
         let patternDescription = '';
-        
         if (formData.frequency === 'semanal') {
           patternDescription = `todos los ${dayName}s`;
         } else if (formData.frequency === 'quincenal') {
@@ -192,9 +195,7 @@ function AppointmentForm({
           const dayNumber = startDate.getDate();
           patternDescription = `el día ${dayNumber} de cada mes`;
         }
-        
         const confirmMessage = `Se van a crear ${previewDates.length} turnos ${patternDescription} desde el ${startDate.toLocaleDateString('es-ES')} hasta el ${previewDates[previewDates.length - 1].toLocaleDateString('es-ES')}.`;
-        
         // Preparar datos para la función de turnos recurrentes
         const appointmentData = {
           ...formData,
@@ -202,7 +203,6 @@ function AppointmentForm({
           amount: parseFloat(formData.amount),
           date: new Date(formData.date).toISOString()
         };
-
         // Mostrar modal de confirmación
         setConfirmModal({
           isOpen: true,
@@ -210,11 +210,9 @@ function AppointmentForm({
           appointmentData,
           isRecurring: true
         });
-        
         setLoading(false);
         return;
       }
-      
       onClose();
     } catch (error) {
       console.error('Error saving appointment:', error);
@@ -436,6 +434,24 @@ function AppointmentForm({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Checkbox para Google Calendar */}
+          {typeof addToCalendar !== 'undefined' && typeof onAddToCalendarChange === 'function' && (
+            <div className="form-field">
+              <label className="calendar-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={localAddToCalendar}
+                  onChange={e => {
+                    setLocalAddToCalendar(e.target.checked);
+                    onAddToCalendarChange(e.target.checked);
+                  }}
+                  className="calendar-checkbox"
+                />
+                Agregar a Google Calendar
+              </label>
             </div>
           )}
 

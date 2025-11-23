@@ -4,6 +4,7 @@ import { AuthContext } from '../../App';
 import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
 import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized, isGoogleApiReady } from '../../lib/googleCalendar';
+import { reconnectGoogleCalendar } from '../../lib/googleCalendarReconnect';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import GoogleCalendarSettings from '../GoogleCalendarSettings/GoogleCalendarSettings';
@@ -495,27 +496,19 @@ debugger;
     });
   };
 
-  const handleSaveAppointment = async (appointmentData, isRecurring = false) => {
+  const handleSaveAppointment = async (appointmentData, isRecurring = false, addToCalendar = true) => {
     try {
       setAppointmentLoading(true);
-
       const userId = extractUserIdFromToken(token);
       if (!userId) {
         toast.error('Error de autenticación');
         return;
       }
-
-      // Agregar user_id a los datos de la cita
       const appointmentWithUserId = {
         ...appointmentData,
         user_id: userId
       };
-
-      console.log('Saving appointment:', appointmentWithUserId);
-
       let result;
-
-      // Si es recurrente y no es única, usar la función de turnos recurrentes
       if (isRecurring && appointmentData.frequency !== 'unica') {
         console.log('Creating recurring appointments...');
         // Mostrar modal de confirmación para turnos recurrentes aca
@@ -532,7 +525,7 @@ debugger;
         };
         appointmentWithUserId.patient_id = patientId;
         const actualAppointments = (await supabaseRest.getAppointmentsByUserId(appointmentWithUserId.user_id))
-          .filter(appointment => appointment.patient_id === patientId);
+          .filter(appointment => appointment.patient_id === patientId && appointment.user_id === appointmentWithUserId.user_id);
         appointmentData = {
           ...appointmentData,
           actualAppointments
@@ -547,40 +540,33 @@ debugger;
         // Intentar crear evento en Google Calendar si está autorizado
         setCalendarLoading(true);
         try {
-          if (isAuthorized()) {
-            // DEBUGGING: Verificar datos del paciente
-            console.log('🔍 [handleSaveAppointment] appointmentForm.patient:', appointmentForm.patient);
-            console.log('🔍 [handleSaveAppointment] appointmentWithUserId:', appointmentWithUserId);
-
+          if (isAuthorized() && addToCalendar) {
             try {
               await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
               toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar`);
             } catch (calendarError) {
-              // Si la API no está lista, intentar reconectar automáticamente
               if (calendarError.message && calendarError.message.includes('no está lista')) {
-                try {
-                  const { initializeGoogleAPI, authorizeGoogleCalendar } = await import('../../lib/googleCalendar');
-                  await initializeGoogleAPI();
-                  await authorizeGoogleCalendar();
-                  // Reintentar crear el evento una vez
-                  await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
-                  toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar (tras reconexión)`);
-                } catch (reconnectError) {
-                  console.error('Error reintentando Google Calendar:', reconnectError);
+                const reconnected = await reconnectGoogleCalendar();
+                if (reconnected) {
+                  try {
+                    await createCalendarEvent(appointmentWithUserId, appointmentForm.patient);
+                    toast.success(`📅 Turno programado para ${appointmentForm.patient.name} y añadido a Google Calendar (tras reconexión)`);
+                  } catch (err2) {
+                    toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+                    toast.error('No se pudo sincronizar con Google Calendar tras reconexión');
+                  }
+                } else {
                   toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
-                  toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${reconnectError.message}`);
+                  toast.error('No se pudo reconectar Google Calendar');
                 }
               } else {
-                throw calendarError;
+                toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
+                toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${calendarError.message}`);
               }
             }
           } else {
             toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
           }
-        } catch (calendarError) {
-          console.error('Error creating Google Calendar event:', calendarError);
-          toast.success(`📅 Turno programado para ${appointmentForm.patient.name}`);
-          toast.error(`⚠️ No se pudo sincronizar con Google Calendar: ${calendarError.message}`);
         } finally {
           setCalendarLoading(false);
         }
@@ -1051,22 +1037,30 @@ debugger;
               <button
                 className="confirm-replace-btn"
                 onClick={() => confirmRecurringAppointments(true)}
+                disabled={appointmentLoading}
               >
-                Reemplazar
+                {appointmentLoading ? 'Cargando...' : 'Reemplazar'}
               </button>
               <button
                 className="confirm-keep-btn"
                 onClick={() => confirmRecurringAppointments(false)}
+                disabled={appointmentLoading}
               >
-                Mantener
+                {appointmentLoading ? 'Cargando...' : 'Mantener'}
               </button>
               <button
                 className="confirm-cancel-btn"
                 onClick={cancelRecurringConfirmation}
+                disabled={appointmentLoading}
               >
                 Cancelar
               </button>
             </div>
+            {appointmentLoading && (
+              <div className="appointment-loading-overlay">
+                <Loading message="Procesando..." size="medium" overlay={false} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1077,6 +1071,8 @@ debugger;
         onClose={handleCloseAppointment}
         onSave={handleSaveAppointment}
         patient={appointmentForm.patient}
+        addToCalendar={isAuthorized() ? appointmentForm.addToCalendar : undefined}
+        onAddToCalendarChange={isAuthorized() ? (checked => setAppointmentForm(prev => ({ ...prev, addToCalendar: checked }))) : undefined}
       />
 
       {/* Loading Overlays */}
