@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import { authCheck } from '../../lib/supabaseRest';
+import { getAuthStatusByUserId } from '../../lib/authStatusRest';
 import { AuthContext } from '../../App';
 
 function Login() {
@@ -40,6 +41,14 @@ function Login() {
       console.debug('[Login] authCheck result:', result);
       if (!result || !result.valid) throw new Error('Credenciales inválidas');
       const newToken = `user-${result.user_id}-${Date.now()}`;
+      // Verificar estado en auth_status antes de continuar
+      const authStatus = await getAuthStatusByUserId(result.user_id);
+      if (authStatus && authStatus.status === false) {
+        setError('Usuario desactivado. Contacte al administrador.');
+        // Borra el token si existe
+        handleAuth(null);
+        return;
+      }
       handleAuth(newToken);
       navigate('/dashboard');
     } catch (err) {

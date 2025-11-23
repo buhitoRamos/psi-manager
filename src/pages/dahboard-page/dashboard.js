@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./dashboard.css";
 import { AuthContext } from "../../App";
@@ -6,6 +6,9 @@ import Patients from "../../components/patients-board/patients";
 import Appointments from "../../components/Appointments/Appointments";
 import Payments from "../../components/Payments/Payments";
 import Menu from "../../components/Menu/Menu";
+import { getAuthStatusByUserId } from '../../lib/authStatusRest';
+
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +31,26 @@ const Dashboard = () => {
   const handleNavigateToPayments = () => {
     setCurrentSection('pagos');
   };
+
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  let userId = null;
+  if (token) {
+    const match = token.match(/^user-(\d+)-/);
+    if (match) {
+      userId = match[1];
+    }
+  }
+  if (userId) {
+    getAuthStatusByUserId(userId).then((result) => {
+      // Si el status es false, desloguea
+      if (result && result.status === false) {
+        handleLogout();
+      }
+    });
+  }
+  // eslint-disable-next-line
+});
 
   return (
     <div className="dashboard">
