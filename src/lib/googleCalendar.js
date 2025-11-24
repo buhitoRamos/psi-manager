@@ -1,5 +1,24 @@
-
 import { GOOGLE_CALENDAR_CONFIG, DEBUG_CONFIG } from '../config/appConfig.js';
+/**
+ * Ejecuta una acción en lotes de tamaño batchSize, con espera entre bloques
+ * @param {Array} items - Elementos a procesar
+ * @param {Function} action - Función async a ejecutar por cada item
+ * @param {number} batchSize - Tamaño del lote (default 10)
+ * @param {number} delayMs - Espera entre lotes en ms (default 3000)
+ * @returns {Promise<Array>} - Array de resultados (Promise.allSettled)
+ */
+export async function processInBatches(items, action, batchSize = 10, delayMs = 3000) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.allSettled(batch.map(action));
+    results.push(...batchResults);
+    if (i + batchSize < items.length) {
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+  return results;
+}
 // Utilidad para verificar si la API de Google está lista
 export function isGoogleApiReady() {
   return (

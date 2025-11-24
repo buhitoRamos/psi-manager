@@ -1,4 +1,5 @@
 import supabaseRest from '../../lib/supabaseRest';
+import { processInBatches } from '../../lib/googleCalendar';
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { validateConfig, DEBUG_CONFIG } from '../../config/appConfig.js';
@@ -15,11 +16,13 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
   // Acción pendiente ("delete" o "sync")
   const [pendingAction, setPendingAction] = useState(null);
     // Estado para loading de acciones especiales
-    const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [isPreviousClear, setPreviousClear] = useState(true);
     // Eliminar todos los eventos del calendario
     // Borrar eventos en lotes de 10 para evitar rate limit
     const handleDeleteAllCalendarEvents = async () => {
       setActionLoading(true);
+      setPreviousClear(false);
       try {
         const { isAuthorized, deleteCalendarEvent } = await import('../../lib/googleCalendar');
         if (!isAuthorized()) throw new Error('Debes conectar Google Calendar primero.');
@@ -41,29 +44,21 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
           pageToken = response.result.nextPageToken;
         } while (pageToken);
 
-        // Borrar en lotes de 10
-        const batchSize = 10;
-        let deleted = 0;
-        let errors = 0;
+        // Borrar en lotes usando utilitario
+        const results = await processInBatches(
+          allEvents,
+          (event) => deleteCalendarEvent(event.id),
+          10, 3000
+        );
+        const deleted = results.filter(r => r.status === 'fulfilled' && r.value).length;
+        const errorResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value));
+        const errors = errorResults.length;
         let errorMsg = '';
-        for (let i = 0; i < allEvents.length; i += batchSize) {
-          const batch = allEvents.slice(i, i + batchSize);
-          const results = await Promise.allSettled(
-            batch.map(event => deleteCalendarEvent(event.id))
-          );
-          deleted += results.filter(r => r.status === 'fulfilled' && r.value).length;
-          const errorResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value));
-          errors += errorResults.length;
-          if (!errorMsg && errorResults[0]) {
-            if (errorResults[0].status === 'rejected') {
-              errorMsg = errorResults[0].reason?.message || errorResults[0].reason || '';
-            } else {
-              errorMsg = 'No se pudo eliminar uno o más eventos.';
-            }
-          }
-          // Esperar 3 segundos entre lotes para evitar rate limit
-          if (i + batchSize < allEvents.length) {
-            await new Promise(res => setTimeout(res, 3000));
+        if (errors && errorResults[0]) {
+          if (errorResults[0].status === 'rejected') {
+            errorMsg = errorResults[0].reason?.message || errorResults[0].reason || '';
+          } else {
+            errorMsg = 'No se pudo eliminar uno o más eventos.';
           }
         }
         toast.success(`Se eliminaron ${deleted} eventos.${errors ? ' Errores: ' + errors : ''}${errorMsg ? ' Ejemplo: ' + errorMsg : ''}`);
@@ -87,30 +82,25 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
         const userId = token && token.split('-')[1];
         if (!userId) throw new Error('No se pudo obtener el usuario.');
         const appointments = await supabaseRest.getAppointmentsByUserId(userId);
-        const batchSize = 10;
-        let created = 0, errors = 0;
+        // Crear en lotes usando utilitario
+        const results = await processInBatches(
+          appointments,
+          (apt) => createCalendarEvent(apt, { name: apt.patient_name, last_name: apt.patient_last_name }),
+          10, 3000
+        );
+        const created = results.filter(r => r.status === 'fulfilled').length;
+        const errorResults = results.filter(r => r.status === 'rejected');
+        const errors = errorResults.length;
         let errorMsg = '';
-        for (let i = 0; i < appointments.length; i += batchSize) {
-          const batch = appointments.slice(i, i + batchSize);
-          const results = await Promise.allSettled(
-            batch.map(apt => createCalendarEvent(apt, { name: apt.patient_name, last_name: apt.patient_last_name }))
-          );
-          created += results.filter(r => r.status === 'fulfilled').length;
-          const errorResults = results.filter(r => r.status === 'rejected');
-          errors += errorResults.length;
-          if (!errorMsg && errorResults[0]) {
-            errorMsg = errorResults[0].reason?.message || errorResults[0].reason || '';
-          }
-          // Esperar 3 segundos entre bloques
-          if (i + batchSize < appointments.length) {
-            await new Promise(res => setTimeout(res, 3000));
-          }
+        if (errors && errorResults[0]) {
+          errorMsg = errorResults[0].reason?.message || errorResults[0].reason || '';
         }
         toast.success(`Sincronización completa: ${created} turnos añadidos.${errors ? ' Errores: ' + errors : ''}${errorMsg ? ' Ejemplo: ' + errorMsg : ''}`);
       } catch (err) {
         toast.error('Error al sincronizar: ' + (err.message || err));
       } finally {
         setActionLoading(false);
+        setPreviousClear(true);
       }
     };
   const [isConnected, setIsConnected] = useState(false);
@@ -118,6 +108,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState('');
   const [tokenExpired, setTokenExpired] = useState(false);
+
 
   useEffect(() => {
     checkConnection();
@@ -130,7 +121,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
     // Escuchar cambios en gapi
     const interval = setInterval(checkApiReady, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isPreviousClear]);
 
   const validateApiConfiguration = () => {
     const configValidation = validateConfig();
@@ -315,11 +306,12 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
                   if (!isApiReady || !isConnected) {
                     setPendingAction('sync');
                     setShowReconnectModal(true);
+                    setPreviousClear(true);
                   } else {
                     handleSyncAllAppointments();
                   }
                 }}
-                disabled={isLoading || actionLoading}
+                disabled={isLoading || actionLoading || isPreviousClear}
                 style={{ marginTop: 10 }}
               >
                 🔄 Sincronizar turnos de la app con Google Calendar
