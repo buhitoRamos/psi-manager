@@ -496,38 +496,30 @@ export const createRecurringCalendarEvents = async (appointments, patientData) =
 
   console.log(`🔄 Creando ${appointments.length} eventos de Google Calendar...`);
 
-  // Procesar en lotes pequeños para evitar rate limiting
+  // Procesar en lotes de 10 en paralelo, con 3 segundos entre bloques
   const batchSize = 10;
   for (let i = 0; i < appointments.length; i += batchSize) {
     const batch = appointments.slice(i, i + batchSize);
-    
-    const batchPromises = batch.map((appointment, index) => {
-      return new Promise(async (resolve) => {
-        try {
-          // Pequeña pausa entre eventos para evitar rate limiting
-          await new Promise(resolveTimeout => setTimeout(resolveTimeout, index * 100));
-          
-          const result = await createCalendarEvent(appointment, patientData);
-          
-          resolve({ success: true, result, appointment, fallback: result.fallback || false });
-        } catch (error) {
+    const batchPromises = batch.map(appointment => {
+      return createCalendarEvent(appointment, patientData)
+        .then(result => ({ success: true, result, appointment, fallback: result.fallback || false }))
+        .catch(error => {
           if (typeof window !== 'undefined' && window.toast) {
             window.toast.error('Error creando evento de Google Calendar: ' + (error.message || error));
           } else {
             console.error('Error creating calendar event:', error);
           }
-          resolve({ success: false, error: error.message, appointment, fallback: false });
-        }
-      });
+          return { success: false, error: error.message, appointment, fallback: false };
+        });
     });
 
     const batchResults = await Promise.all(batchPromises);
-    
+
     // Procesar resultados y evitar referencia insegura en bucle
     const successfulResults = [];
     const failedResults = [];
     let batchHasFallback = false;
-    
+
     batchResults.forEach(item => {
       if (item.success) {
         successfulResults.push(item.result);
@@ -538,7 +530,7 @@ export const createRecurringCalendarEvents = async (appointments, patientData) =
         failedResults.push({ appointment: item.appointment, error: item.error });
       }
     });
-    
+
     // Actualizar arrays principales
     results.push(...successfulResults);
     errors.push(...failedResults);
@@ -546,9 +538,9 @@ export const createRecurringCalendarEvents = async (appointments, patientData) =
       fallbackUsed = true;
     }
 
-    // Pausa entre lotes
+    // Pausa de 3 segundos entre lotes
     if (i + batchSize < appointments.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
 
@@ -773,14 +765,17 @@ export const deletePatientCalendarEvents = async (patientData, appointments = []
       };
     }
 
-    // Eliminar eventos uno por uno
+
+    // Eliminar eventos en bloques de 10 en paralelo, con 3 segundos entre bloques
     const results = [];
     const errors = [];
-
-    for (const event of events) {
-      try {
-        const deleted = await deleteCalendarEvent(event.id);
-        if (deleted) {
+    const batchSize = 10;
+    for (let i = 0; i < events.length; i += batchSize) {
+      const batch = events.slice(i, i + batchSize);
+      const batchResults = await Promise.allSettled(batch.map(event => deleteCalendarEvent(event.id)));
+      batch.forEach((event, idx) => {
+        const res = batchResults[idx];
+        if (res.status === 'fulfilled' && res.value) {
           results.push({
             eventId: event.id,
             summary: event.summary,
@@ -791,23 +786,13 @@ export const deletePatientCalendarEvents = async (patientData, appointments = []
           errors.push({
             eventId: event.id,
             summary: event.summary,
-            error: 'No se pudo eliminar'
+            error: res.reason ? (res.reason.message || res.reason) : 'No se pudo eliminar'
           });
         }
-        
-        // Pausa pequeña entre eliminaciones para evitar rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
-      } catch (error) {
-        if (typeof window !== 'undefined' && window.toast) {
-          window.toast.error(`❌ Error eliminando evento ${event.id}: ` + (error.message || error));
-        } else {
-          console.error(`❌ Error eliminando evento ${event.id}:`, error);
-        }
-        errors.push({
-          eventId: event.id,
-          summary: event.summary,
-          error: error.message
-        });
+      });
+      // Esperar 3 segundos entre bloques si quedan más eventos
+      if (i + batchSize < events.length) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 

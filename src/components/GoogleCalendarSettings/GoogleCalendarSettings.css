@@ -1,3 +1,48 @@
+.danger-btn {
+  background: linear-gradient(90deg, #ff5858 0%, #f09819 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 88, 88, 0.10);
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-bottom: 0.5rem;
+}
+.danger-btn:disabled {
+  background: #f8d7da;
+  color: #b71c1c;
+  cursor: not-allowed;
+}
+.danger-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, #e53935 0%, #f09819 100%);
+  box-shadow: 0 4px 16px rgba(255, 88, 88, 0.18);
+}
+
+.sync-btn {
+  background: linear-gradient(90deg, hwb(161 26% 19%) 0%, #185a9d 100%);
+  color: #fff;
+  border: none;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.10);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.sync-btn:disabled {
+  background: #e0f7fa;
+  color: #006064;
+  cursor: not-allowed;
+}
+.sync-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, #11998e 0%, #185a9d 100%);
+  box-shadow: 0 4px 16px rgba(67, 206, 162, 0.18);
+}
 /* Modal de configuración de Google Calendar */
 .google-calendar-modal-overlay {
   position: fixed;

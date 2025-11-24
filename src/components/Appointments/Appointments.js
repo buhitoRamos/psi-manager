@@ -7,7 +7,7 @@ import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import Loading from '../Loading/Loading';
 import './Appointments.css';
-import { createCalendarEvent } from '../../lib/googleCalendar';
+import { createCalendarEvent, createRecurringCalendarEvents } from '../../lib/googleCalendar';
 import { reconnectGoogleCalendar } from '../../lib/googleCalendarReconnect';
 
 // Función para extraer el user_id del token
@@ -21,6 +21,9 @@ function extractUserIdFromToken(token) {
   }
   return null;
 }
+
+ const { deletePatientCalendarEvents, isAuthorized } = await import('../../lib/googleCalendar');
+
 
 // Función para normalizar texto removiendo acentos/tildes
 function normalizeText(text) {
@@ -401,7 +404,6 @@ function Appointments() {
           // Si se está reemplazando, eliminar primero los eventos viejos
           if (shouldClearExisting) {
             try {
-              const { deletePatientCalendarEvents, isAuthorized } = await import('../../lib/googleCalendar');
               if (isAuthorized()) {
                 await deletePatientCalendarEvents(patient);
                 toast.success('Eventos viejos eliminados de Google Calendar');
@@ -410,27 +412,20 @@ function Appointments() {
               toast.error('No se pudieron eliminar los eventos viejos de Google Calendar');
             }
           }
-          for (const apt of result.appointments) {
-            try {
-              await createCalendarEvent({ ...apt, user_id: userId }, patient);
-            } catch (calendarError) {
-              if (calendarError.message && calendarError.message.includes('no está lista')) {
-                const reconnected = await reconnectGoogleCalendar();
-                if (reconnected) {
-                  try {
-                    await createCalendarEvent({ ...apt, user_id: userId }, patient);
-                  } catch (err2) {
-                    toast.error('No se pudo agregar a Google Calendar tras reconexión');
-                  }
-                } else {
-                  toast.error('No se pudo reconectar Google Calendar');
-                }
-              } else {
-                toast.error('No se pudo agregar a Google Calendar');
-              }
+          try {
+            const { createRecurringCalendarEvents } = await import('../../lib/googleCalendar');
+            const res = await createRecurringCalendarEvents(
+              result.appointments.map(apt => ({ ...apt, user_id: userId })),
+              patient
+            );
+            if (res && res.created) {
+              toast.success(`Turnos añadidos a Google Calendar (${res.created} creados${res.errors ? ', ' + res.errors + ' errores' : ''})`);
+            } else {
+              toast.error('No se pudieron añadir los turnos a Google Calendar');
             }
+          } catch (calendarError) {
+            toast.error('No se pudo agregar a Google Calendar (bloque)');
           }
-          toast.success('Turnos añadidos a Google Calendar');
         }
       } catch (error) {
         console.error('Error creando turnos recurrentes:', error);
@@ -1130,8 +1125,8 @@ Esta acción no se puede deshacer.`}
         existingAppointment={editingAppointment.appointment}
         isPaid={editingAppointment.isPaid}
         onPaymentChange={editingAppointment.onPaymentChange}
-        addToCalendar={typeof editingAppointment.addToCalendar !== 'undefined' ? editingAppointment.addToCalendar : true}
-        onAddToCalendarChange={checked => setEditingAppointment(prev => ({ ...prev, addToCalendar: checked }))}
+        addToCalendar={isAuthorized() ? editingAppointment.addToCalendar : undefined}
+        onAddToCalendarChange={isAuthorized() ? (checked => setEditingAppointment(prev => ({ ...prev, addToCalendar: checked }))) : undefined}
       />
 
       {/* Loading Overlay para operaciones de calendario */}

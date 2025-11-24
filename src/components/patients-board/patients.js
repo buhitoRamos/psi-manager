@@ -653,13 +653,6 @@ debugger;
         <h2>Lista de Pacientes</h2>
         <div className="patients-header-actions">
           {patients.length > 0 && addPatient()}
-          <button
-            className="google-calendar-settings-btn"
-            onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)}
-            title="Configurar Google Calendar"
-          >
-            📅 Google Calendar
-          </button>
         </div>
         <p className="patients-user-info">Usuario ID: {userId}</p>
 

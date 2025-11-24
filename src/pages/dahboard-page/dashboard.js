@@ -6,6 +6,7 @@ import Patients from "../../components/patients-board/patients";
 import Appointments from "../../components/Appointments/Appointments";
 import Payments from "../../components/Payments/Payments";
 import Menu from "../../components/Menu/Menu";
+import GoogleCalendarSettings from "../../components/GoogleCalendarSettings/GoogleCalendarSettings";
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
 
 
@@ -14,6 +15,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { handleAuth } = useContext(AuthContext);
   const [currentSection, setCurrentSection] = useState('patients');
+  const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
 
   const handleLogout = () => {
     handleAuth(null);
@@ -69,6 +71,7 @@ useEffect(() => {
           onNavigateToTurnos={handleNavigateToTurnos}
           onNavigateToPatients={handleNavigateToPatients}
           onNavigateToPayments={handleNavigateToPayments}
+          onOpenGoogleCalendarSettings={() => setShowGoogleCalendarSettings(true)}
         />
       </header>
       <main className="dashboard-content">
@@ -88,6 +91,9 @@ useEffect(() => {
           </section>
         )}
       </main>
+      {showGoogleCalendarSettings && (
+        <GoogleCalendarSettings isOpen={showGoogleCalendarSettings} onClose={() => setShowGoogleCalendarSettings(false)} />
+      )}
     </div>
   );
 };
