@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
@@ -41,6 +41,13 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
     }
   };
 
+  const handleReports = () => {
+    setIsOpen(false);
+    if (onNavigateToReports) {
+      onNavigateToReports();
+    }
+  };
+
   return (
     <div className="menu-container">
       {/* Botón hamburguesa */}
@@ -74,6 +81,10 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
           <button className="menu-item" onClick={handlePayments}>
             <span className="menu-icon">💰</span>
             Pagos
+          </button>
+          <button className="menu-item" onClick={handleReports}>
+            <span className="menu-icon">📈</span>
+            Informes
           </button>
           <button className="menu-item" onClick={() => { setIsOpen(false); if (onOpenGoogleCalendarSettings) onOpenGoogleCalendarSettings(); }}>
             <span className="menu-icon">🗓️</span>

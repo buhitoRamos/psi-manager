@@ -5,6 +5,7 @@ import { AuthContext } from "../../App";
 import Patients from "../../components/patients-board/patients";
 import Appointments from "../../components/Appointments/Appointments";
 import Payments from "../../components/Payments/Payments";
+import Reports from "../../components/Reports/Reports";
 import Menu from "../../components/Menu/Menu";
 import GoogleCalendarSettings from "../../components/GoogleCalendarSettings/GoogleCalendarSettings";
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
@@ -33,6 +34,9 @@ const Dashboard = () => {
   const handleNavigateToPayments = () => {
     setCurrentSection('pagos');
   };
+  const handleNavigateToReports = () => {
+    setCurrentSection('reports');
+  }
 
 useEffect(() => {
   const token = localStorage.getItem('token');
@@ -64,10 +68,12 @@ useEffect(() => {
             {currentSection === 'turnos' && <span className="section-indicator">- Turnos</span>}
             {currentSection === 'patients' && <span className="section-indicator">- Pacientes</span>}
             {currentSection === 'pagos' && <span className="section-indicator">- Pagos</span>}
+            {currentSection === 'reports' && <span className="section-indicator">- Informes</span>}
           </div>
         </div>
         <Menu 
           onLogout={handleLogout} 
+          onNavigateToReports={handleNavigateToReports}
           onNavigateToTurnos={handleNavigateToTurnos}
           onNavigateToPatients={handleNavigateToPatients}
           onNavigateToPayments={handleNavigateToPayments}
@@ -88,6 +94,11 @@ useEffect(() => {
         {currentSection === 'pagos' && (
           <section className="payments-section">
             <Payments />
+          </section>
+        )}
+        {currentSection === 'reports' && (
+          <section className="reports-section">
+            <Reports />
           </section>
         )}
       </main>

@@ -1,3 +1,4 @@
+
 // Helper utilities to query Supabase REST (PostgREST) directly using fetch.
 // Usage: import { selectUsersByUser, insertUser, updateUserPass } from './lib/supabaseRest'
 // WARNING: Using the ANON key from the client is public-facing; ensure RLS/policies are correct
@@ -905,7 +906,49 @@ const supabaseRest = {
       console.error('Error in getPatientsWithNextAppointment:', err);
       throw err;
     }
-  }
+  },
+
+  // PROGRESS table helpers
+  async getProgressReports() {
+    const path = `/rest/v1/progress?select=id,created_at,dx_presumptive,dx_psychiatric,dx_semesterly,dx_annual,medication,patient:patients(id,name,last_name)`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'GET', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
+    return { data: await res.json() };
+  },
+
+  async insertProgressReport(report) {
+    const path = `/rest/v1/progress`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...headers('application/json'),
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(report)
+    });
+    if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // Actualiza un informe de progreso por id
+async updateProgressReport(id, fields) {
+  const path = `/rest/v1/progress?id=eq.${id}`;
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      ...headers('application/json'),
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(fields)
+  });
+  if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 };
+
 
 export default supabaseRest;
