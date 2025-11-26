@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import toast from 'react-hot-toast';
 import supabaseRest from '../../lib/supabaseRest';
 import { AuthContext } from '../../App';
@@ -101,9 +103,27 @@ function ReportForm({ onSubmit }) {
       )}
       <input name="dx_presumptive" placeholder="DX Presuntivo" value={form.dx_presumptive} onChange={handleChange} />
       <input name="dx_psychiatric" placeholder="DX Psiquiátrico" value={form.dx_psychiatric} onChange={handleChange} />
-      <textarea name="dx_semesterly" placeholder="DX Semestral" value={form.dx_semesterly} onChange={handleChange} rows={3} style={{resize:'vertical'}} />
-      <textarea name="dx_annual" placeholder="DX Anual" value={form.dx_annual} onChange={handleChange} rows={3} style={{resize:'vertical'}} />
-      <textarea name="medication" placeholder="Medicación" value={form.medication} onChange={handleChange} />
+      <label>DX Semestral:</label>
+      <ReactQuill
+        value={form.dx_semesterly || ''}
+        onChange={value => setForm(prev => ({ ...prev, dx_semesterly: value }))}
+        theme="snow"
+        style={{ marginBottom: 8 }}
+      />
+      <label>DX Anual:</label>
+      <ReactQuill
+        value={form.dx_annual || ''}
+        onChange={value => setForm(prev => ({ ...prev, dx_annual: value }))}
+        theme="snow"
+        style={{ marginBottom: 8 }}
+      />
+      <label>Medicación:</label>
+      <ReactQuill
+        value={form.medication || ''}
+        onChange={value => setForm(prev => ({ ...prev, medication: value }))}
+        theme="snow"
+        style={{ marginBottom: 8 }}
+      />
       <button type="submit">Cargar informe</button>
     </form>
   );
