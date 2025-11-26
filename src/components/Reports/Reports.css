@@ -1,0 +1,210 @@
+/* src/components/Reports/Reports.css */
+
+/* General container for reports */
+.reports-container {
+  padding: 24px;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+
+.reports-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #22223b;
+}
+
+.reports-tabs {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.reports-tabs button {
+  background: #fff;
+  border: 1px solid #c9c9c9;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 1rem;
+  color: #22223b;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.reports-tabs button.active {
+  background: #10B981;
+  color: #fff;
+  border-color: #10B981;
+}
+
+/* Report Card Styles */
+.report-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  margin: 16px 0;
+  padding: 20px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(34,34,59,0.04);
+  transition: box-shadow 0.2s;
+}
+.report-card:hover {
+  box-shadow: 0 4px 16px rgba(34,34,59,0.08);
+}
+.report-card-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.report-card-title {
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin-right: 12px;
+  color: #22223b;
+}
+.report-card-date {
+  color: #888;
+  font-size: 0.95rem;
+}
+.report-card-arrow {
+  margin-left: auto;
+  color: #10B981;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+.report-card-content {
+  text-align: left;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.report-card-label {
+  display: inline-block;
+  font-weight: 600;
+  color: #333;
+  background: #eceff4;
+  border-radius: 8px;
+  padding: 4px 0;
+  margin-bottom: 4px;
+  margin-top: 2px;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+}
+
+.report-card-segment {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1.5px solid #e3e6ee;
+  transition: border-color 0.2s;
+}
+.report-card-content .report-card-segment:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.report-card-value {
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #22223b;
+  font-size: 1rem;
+  word-break: break-word;
+}
+.report-card-edit-btn {
+  background: #10B981;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 8px;
+  align-self: flex-end;
+  transition: background 0.2s;
+}
+.report-card-edit-btn:hover {
+  background: #059669;
+}
+
+/* Report Form Styles */
+.report-form {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(34,34,59,0.04);
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto 32px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.report-form label {
+  font-weight: 500;
+  color: #4a4e69;
+  margin-bottom: 4px;
+}
+.report-form input,
+.report-form select {
+  border: 1px solid #c9c9c9;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  background: #f5f7fa;
+  color: #22223b;
+}
+.report-form .ql-container {
+  border-radius: 6px;
+  background: #f5f7fa;
+}
+.report-form .ql-toolbar {
+  border-radius: 6px 6px 0 0;
+}
+.report-form button[type="submit"] {
+  background: #10B981;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-top: 12px;
+  align-self: flex-end;
+  transition: background 0.2s;
+}
+.report-form button[type="submit"]:hover {
+  background: #059669;
+}
+
+/* Report Table Styles */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(34,34,59,0.04);
+  margin-top: 24px;
+}
+.report-table th, .report-table td {
+  border: 1px solid #e0e0e0;
+  padding: 10px 8px;
+  text-align: left;
+  color: #22223b;
+}
+.report-table th {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+.report-table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .report-form, .report-card, .report-table {
+    padding: 12px;
+    font-size: 0.95rem;
+  }
+  .reports-title {
+    font-size: 1.3rem;
+  }
+}

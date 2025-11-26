@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ReportForm from './ReportForm';
 import ReportCard from './ReportCard';
 import supabaseRest from '../../lib/supabaseRest';
+import './Reports.css';
 
 function Reports() {
   const [reports, setReports] = useState([]);
@@ -53,32 +54,18 @@ function Reports() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Informes de Progreso</h2>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+    <div className="reports-container">
+      <h2 className="reports-title">Informes de Progreso</h2>
+      <div className="reports-tabs">
         <button
+          className={tab === 'view' ? 'active' : ''}
           onClick={() => setTab('view')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: 6,
-            border: tab === 'view' ? '2px solid #10B981' : '1px solid #ccc',
-            background: tab === 'view' ? '#e6f9f2' : '#fff',
-            fontWeight: tab === 'view' ? 'bold' : 'normal',
-            cursor: 'pointer',
-          }}
         >
           Ver informes
         </button>
         <button
+          className={tab === 'generate' ? 'active' : ''}
           onClick={() => setTab('generate')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: 6,
-            border: tab === 'generate' ? '2px solid #10B981' : '1px solid #ccc',
-            background: tab === 'generate' ? '#e6f9f2' : '#fff',
-            fontWeight: tab === 'generate' ? 'bold' : 'normal',
-            cursor: 'pointer',
-          }}
         >
           Generar informe
         </button>

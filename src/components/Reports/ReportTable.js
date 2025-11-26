@@ -1,9 +1,10 @@
 import React from 'react';
+import './Reports.css';
 
 function ReportTable({ reports }) {
   if (!reports.length) return <div>No hay informes cargados.</div>;
   return (
-    <table border="1" cellPadding={4} style={{ marginTop: 16, width: '100%' }}>
+    <table className="report-table">
       <thead>
         <tr>
           <th>id</th>

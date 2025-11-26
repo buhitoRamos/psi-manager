@@ -4,6 +4,7 @@ import 'react-quill/dist/quill.snow.css';
 import toast from 'react-hot-toast';
 import supabaseRest from '../../lib/supabaseRest';
 import { AuthContext } from '../../App';
+import './Reports.css';
 
 const initialForm = {
   dx_presumptive: '',
@@ -86,16 +87,19 @@ function ReportForm({ onSubmit }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label>
-        Paciente:
-        <select name="patient_id" value={form.patient_id} onChange={handlePatientChange} required>
-          <option value="">Seleccionar paciente...</option>
-          {patientsList.map((p) => (
-            <option key={p.id} value={p.id}>{p.name} {p.last_name}</option>
-          ))}
-        </select>
-      </label>
+    <form className="report-form" onSubmit={handleSubmit}>
+      <label>Paciente:</label>
+      <select
+        name="patient_id"
+        value={form.patient_id}
+        onChange={handlePatientChange}
+        required
+      >
+        <option value="">Seleccionar paciente...</option>
+        {patientsList.map((p) => (
+          <option key={p.id} value={p.id}>{p.name} {p.last_name}</option>
+        ))}
+      </select>
       {selectedPatient && (
         <div style={{ color: '#555', fontSize: 14, marginBottom: 4 }}>
           <b>Paciente seleccionado:</b> {selectedPatient.name} {selectedPatient.last_name}
@@ -108,21 +112,18 @@ function ReportForm({ onSubmit }) {
         value={form.dx_semesterly || ''}
         onChange={value => setForm(prev => ({ ...prev, dx_semesterly: value }))}
         theme="snow"
-        style={{ marginBottom: 8 }}
       />
       <label>DX Anual:</label>
       <ReactQuill
         value={form.dx_annual || ''}
         onChange={value => setForm(prev => ({ ...prev, dx_annual: value }))}
         theme="snow"
-        style={{ marginBottom: 8 }}
       />
       <label>Medicación:</label>
       <ReactQuill
         value={form.medication || ''}
         onChange={value => setForm(prev => ({ ...prev, medication: value }))}
         theme="snow"
-        style={{ marginBottom: 8 }}
       />
       <button type="submit">Cargar informe</button>
     </form>

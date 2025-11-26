@@ -110,7 +110,7 @@
   }
 
   .dashboard-content {
-    padding-top: 70px;
+    padding-top: 30px;
   }
 }
 
@@ -144,7 +144,4 @@
     margin: 0;
   }
 
-  .dashboard-content {
-    padding-top: 75px;
-  }
 }
