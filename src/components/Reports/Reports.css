@@ -153,9 +153,10 @@
 }
 .report-form .ql-container {
   border-radius: 6px;
-  background: #f5f7fa;
+  background: white;
 }
 .report-form .ql-toolbar {
+  background-color: #f5f7fa;
   border-radius: 6px 6px 0 0;
 }
 .report-form button[type="submit"] {
