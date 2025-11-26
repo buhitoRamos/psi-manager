@@ -155,6 +155,10 @@
   border-radius: 6px;
   background: white;
 }
+.report-card-content .ql-editor {
+   border-radius: 6px;
+  background: white;
+}
 .report-form .ql-toolbar {
   background-color: #f5f7fa;
   border-radius: 6px 6px 0 0;
