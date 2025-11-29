@@ -6,6 +6,7 @@ import Patients from "../../components/patients-board/patients";
 import Appointments from "../../components/Appointments/Appointments";
 import Payments from "../../components/Payments/Payments";
 import Reports from "../../components/Reports/Reports";
+import Earnings from "../../components/Earnings/Earnings";
 import Menu from "../../components/Menu/Menu";
 import GoogleCalendarSettings from "../../components/GoogleCalendarSettings/GoogleCalendarSettings";
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
@@ -36,6 +37,10 @@ const Dashboard = () => {
   };
   const handleNavigateToReports = () => {
     setCurrentSection('reports');
+  }
+
+  const handleNavigateToEarnings = () => {
+    setCurrentSection('earnings');
   }
 
 useEffect(() => {
@@ -74,6 +79,7 @@ useEffect(() => {
         <Menu 
           onLogout={handleLogout} 
           onNavigateToReports={handleNavigateToReports}
+          onNavigateToEarnings={handleNavigateToEarnings}
           onNavigateToTurnos={handleNavigateToTurnos}
           onNavigateToPatients={handleNavigateToPatients}
           onNavigateToPayments={handleNavigateToPayments}
@@ -99,6 +105,11 @@ useEffect(() => {
         {currentSection === 'reports' && (
           <section className="reports-section">
             <Reports />
+          </section>
+        )}
+        {currentSection === 'earnings' && (
+          <section className="earnings-section">
+            <Earnings />
           </section>
         )}
       </main>

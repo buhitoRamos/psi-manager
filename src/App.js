@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AppointmentsUpdateProvider } from './contexts/AppointmentsUpdateContext';
 import LoginPage from './pages/login-page/login';
 import Dashboard from './pages/dahboard-page/dashboard';
-import Reports from './components/Reports/Reports';
+
 
 export const AuthContext = createContext(null);
 
@@ -46,7 +46,6 @@ function App() {
             <Routes>
               <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
               <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-              <Route path="/reports" element={isAuthenticated ? <Reports /> : <Navigate to="/login" />} />
               <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
             </Routes>
             <Toaster 

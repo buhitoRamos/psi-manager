@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports, onNavigateToEarnings }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
@@ -48,6 +48,18 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
     }
   };
 
+  const handleEarnings = () => {
+    setIsOpen(false);
+    if (onNavigateToEarnings) {
+      onNavigateToEarnings();
+      return;
+    }
+    if (window && window.location) {
+      window.history.pushState({}, '', '/earnings');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
   return (
     <div className="menu-container">
       {/* Botón hamburguesa */}
@@ -85,6 +97,10 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
           <button className="menu-item" onClick={handleReports}>
             <span className="menu-icon">📈</span>
             Informes
+          </button>
+          <button className="menu-item" onClick={handleEarnings}>
+            <span className="menu-icon">💹</span>
+            Ganancias
           </button>
           <button className="menu-item" onClick={() => { setIsOpen(false); if (onOpenGoogleCalendarSettings) onOpenGoogleCalendarSettings(); }}>
             <span className="menu-icon">🗓️</span>

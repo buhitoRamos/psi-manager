@@ -1,0 +1,75 @@
+/* Earnings component styles */
+.earnings-container {
+  padding: 20px;
+  background: #f5f7fa;
+}
+.earnings-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(34,34,59,0.04);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.earnings-month {
+  font-weight: 700;
+  color: #22223b;
+}
+.earnings-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #10B981;
+}
+.earnings-debt {
+  font-size: 0.98rem;
+  color: #ef4444; /* rojo suave */
+  font-weight: 700;
+  margin-left: 12px;
+}
+.earnings-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.earnings-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.earnings-empty {
+  color: #666;
+  padding: 12px;
+}
+
+.earnings-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.earnings-controls select,
+.earnings-controls input[type="month"] {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+}
+.earnings-totals {
+  margin-top: 12px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.earnings-total-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
+}
+.earnings-total-debt {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ef4444;
+}
