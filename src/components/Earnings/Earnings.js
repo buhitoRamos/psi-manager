@@ -58,9 +58,6 @@ function Earnings() {
         });
 
         // Calculate debt per month: debt = appointments amounts (due) - payments
-        // We will approximate debt by subtracting payments from appointments in a month
-        const monthList = Object.keys(months).map(key => ({ month: key, earnings: months[key].earnings, debt: months[key].debt || 0 }));
-
         // To be more accurate, compute debts by comparing appointments and payments totals
         const appByMonth = {};
         (appointments || []).forEach(a => {

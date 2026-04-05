@@ -7,7 +7,7 @@ import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
 import Loading from '../Loading/Loading';
 import './Appointments.css';
-import { createCalendarEvent, createRecurringCalendarEvents } from '../../lib/googleCalendar';
+import { createCalendarEvent } from '../../lib/googleCalendar';
 import { reconnectGoogleCalendar } from '../../lib/googleCalendarReconnect';
 
 // Función para extraer el user_id del token
@@ -71,7 +71,7 @@ function Appointments() {
   const [loadingMessage, setLoadingMessage] = useState('Cargando turnos...');
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -298,7 +298,6 @@ function Appointments() {
   // Función para guardar los cambios de la cita editada o crear una nueva
   const handleSaveEdit = async (appointmentData, shouldProcessPayment = false, addToCalendar = true) => {
     try {
-      let updatedAppointment = null;
       // Check for new recurring appointment creation
       const isNewRecurring = !editingAppointment.appointment && appointmentData.frequency && appointmentData.frequency !== 'unica';
       if (isNewRecurring) {

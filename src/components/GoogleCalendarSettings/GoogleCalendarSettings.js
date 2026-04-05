@@ -105,7 +105,7 @@ function GoogleCalendarSettings({ isOpen, onClose }) {
     };
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
+  const [, setUserInfo] = useState(null);
   const [error, setError] = useState('');
   const [tokenExpired, setTokenExpired] = useState(false);
 

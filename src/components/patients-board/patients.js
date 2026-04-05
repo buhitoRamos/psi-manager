@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../../App';
 import { useAppointmentsUpdate } from '../../contexts/AppointmentsUpdateContext';
 import supabaseRest from '../../lib/supabaseRest';
-import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized, isGoogleApiReady } from '../../lib/googleCalendar';
+import { createCalendarEvent, createRecurringCalendarEvents, isAuthorized } from '../../lib/googleCalendar';
 import { reconnectGoogleCalendar } from '../../lib/googleCalendarReconnect';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import AppointmentForm from '../AppointmentForm/AppointmentForm';
@@ -466,7 +466,7 @@ function Patients() {
   };
 
   const confirmRecurringAppointments = async (shouldClearExisting =  false) => {
-    const { appointmentData, appointmentWithUserId, patientName, patientData } = recurringConfirmModal;
+    const { appointmentData, appointmentWithUserId } = recurringConfirmModal;
     setRecurringConfirmModal({ isOpen: false, appointmentData: null, appointmentWithUserId: null, patientName: null, patientData: null });
 
     // Fix: Ensure appointmentData.patient_id is available

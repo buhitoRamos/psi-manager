@@ -41,17 +41,6 @@ function ReportForm({ onSubmit }) {
   const [patientsList, setPatientsList] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  function extractUserIdFromToken(token) {
-  if (!token) return null;
-  
-  const parts = token.split('-');
-  if (parts.length >= 2 && parts[0] === 'user') {
-    const userId = parseInt(parts[1], 10);
-    return isNaN(userId) ? null : userId;
-  }
-  return null;
-}
-
   // Cargar pacientes para el selector al tener userId
   useEffect(() => {
     async function loadPatients() {
