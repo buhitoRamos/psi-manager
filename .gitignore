@@ -12,3 +12,4 @@ GOOGLE_CREDENTIALS.md
 *.md.backup
 credentials/
 secrets/
+.aider*
