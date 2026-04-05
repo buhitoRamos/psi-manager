@@ -1,0 +1,17 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    - cron: '0 0 */4 * *'
+  workflow_dispatch: 
+
+jobs:
+  ping_supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Petición a tabla keep
+        run: |
+          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/keep?select=*" \
+          -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}" \
+          -I
