@@ -1,6 +1,5 @@
-// Tests for googleCalendar module utility functions
-// The module has side effects at import time (localStorage access),
-// so we test the pure utility functions by reimplementing and testing them directly.
+// Tests for googleCalendar utility functions
+// The module has side effects at import time (localStorage, gapi), so we test pure utilities
 
 describe('processInBatches utility', () => {
   // Re-implement processInBatches logic for testing (copied from source)
@@ -59,7 +58,6 @@ describe('processInBatches utility', () => {
 });
 
 describe('isGoogleApiReady utility', () => {
-  // Re-implement isGoogleApiReady logic for testing (copied from source)
   function isGoogleApiReady() {
     return (
       typeof window !== 'undefined' &&
@@ -75,14 +73,12 @@ describe('isGoogleApiReady utility', () => {
 
   test('returns false when gapi is not available', () => {
     delete window.gapi;
-    const result = isGoogleApiReady();
-    expect(!result).toBe(true);
+    expect(isGoogleApiReady()).toBeFalsy();
   });
 
   test('returns false when gapi.client is not available', () => {
     window.gapi = {};
-    const result = isGoogleApiReady();
-    expect(!result).toBe(true);
+    expect(isGoogleApiReady()).toBeFalsy();
   });
 
   test('returns true when gapi.client.init is a function', () => {

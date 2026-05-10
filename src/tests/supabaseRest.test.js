@@ -4,6 +4,13 @@ jest.mock('../lib/supabaseRest', () => {
   const mk = () => jest.fn().mockResolvedValue(undefined);
   return {
     __esModule: true,
+    selectUsersByUser: jest.fn().mockResolvedValue([{ id: 1, user: 'testuser' }]),
+    insertUser: jest.fn().mockResolvedValue([{ id: 1, user: 'newuser' }]),
+    updateUserPass: jest.fn().mockResolvedValue([{ id: 1 }]),
+    deleteUser: jest.fn().mockResolvedValue([]),
+    callRpc: jest.fn().mockResolvedValue({ result: 'ok' }),
+    authCheck: jest.fn().mockResolvedValue({ valid: true, user_id: 1 }),
+    getPatientsByUserId: jest.fn().mockResolvedValue([{ id: 1, name: 'Juan' }]),
     default: {
       selectUsersByUser: jest.fn().mockResolvedValue([{ id: 1, user: 'testuser' }]),
       insertUser: jest.fn().mockResolvedValue([{ id: 1, user: 'newuser' }]),
@@ -34,11 +41,13 @@ import supabaseRest from '../lib/supabaseRest';
 describe('supabaseRest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-setup mock return values after clearAllMocks
+    supabaseRest.createPatient.mockResolvedValue({ id: 1, name: 'Juan' });
+    supabaseRest.authCheck.mockResolvedValue({ valid: true, user_id: 1 });
   });
 
   describe('default export methods', () => {
     test('createPatient is callable', async () => {
-      supabaseRest.createPatient.mockResolvedValue({ id: 1, name: 'Juan' });
       await supabaseRest.createPatient({ name: 'Juan', user_id: 1 });
       expect(supabaseRest.createPatient).toHaveBeenCalledWith({ name: 'Juan', user_id: 1 });
     });
@@ -59,7 +68,7 @@ describe('supabaseRest', () => {
     });
 
     test('getAppointmentsByUserId is callable', async () => {
-      const result = await supabaseRest.getAppointmentsByUserId(1);
+      await supabaseRest.getAppointmentsByUserId(1);
       expect(supabaseRest.getAppointmentsByUserId).toHaveBeenCalledWith(1);
     });
 
@@ -84,7 +93,6 @@ describe('supabaseRest', () => {
     });
 
     test('authCheck is callable', async () => {
-      supabaseRest.authCheck.mockResolvedValue({ valid: true, user_id: 1 });
       await supabaseRest.authCheck('testuser', 'password');
       expect(supabaseRest.authCheck).toHaveBeenCalledWith('testuser', 'password');
     });
