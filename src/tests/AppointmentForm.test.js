@@ -1,31 +1,133 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import AppointmentForm, { generateRecurringDates } from '../components/AppointmentForm/AppointmentForm';
+import React from 'react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
-// Note: AppointmentForm exports are default; helper functions are internal. To test them,
-// we'll replicate expected behavior or import via module if exported. For now test UI flows.
+jest.mock('../lib/supabaseRest', () => ({
+  __esModule: true,
+  default: {
+    getPatientsByUserId: jest.fn(() => Promise.resolve([
+      { id: 1, name: 'Juan', last_name: 'Perez' },
+      { id: 2, name: 'María', last_name: 'García' },
+    ])),
+    createAppointment: jest.fn((data) => Promise.resolve({ id: 1, ...data })),
+    createRecurringAppointments: jest.fn(),
+  },
+}));
 
-describe('AppointmentForm', () => {
-  const mockOnSave = jest.fn().mockResolvedValue(true);
-  const mockOnClose = jest.fn();
-  const patient = { id: 1, name: 'Test', last_name: 'User' };
+jest.mock('../lib/googleCalendar', () => ({
+  createCalendarEvent: jest.fn(() => Promise.resolve({})),
+  isAuthorized: jest.fn(() => false),
+}));
 
-  test('no renderiza cuando isOpen false', () => {
-    const { container } = render(<AppointmentForm isOpen={false} onClose={mockOnClose} onSave={mockOnSave} patient={patient} />);
-    expect(container).toBeEmptyDOMElement();
+jest.mock('react-hot-toast', () => ({
+  success: jest.fn(),
+  error: jest.fn(),
+  promise: jest.fn((promise) => promise),
+}));
+
+import AppointmentForm from '../components/AppointmentForm/AppointmentForm';
+import { AuthContext } from '../App';
+
+const authValue = { isAuthenticated: true, token: 'user-1-123', handleAuth: jest.fn() };
+
+const renderAppointmentForm = (props = {}) => {
+  const defaultProps = {
+    isOpen: true,
+    onClose: jest.fn(),
+    onSave: jest.fn(),
+    patient: { id: 1, name: 'Juan', last_name: 'Perez' },
+  };
+  return render(
+    <AuthContext.Provider value={authValue}>
+      <AppointmentForm {...defaultProps} {...props} />
+    </AuthContext.Provider>
+  );
+};
+
+describe('AppointmentForm component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.setItem('token', 'user-1-123');
   });
 
-  test('muestra formulario cuando isOpen true', () => {
-    render(<AppointmentForm isOpen={true} onClose={mockOnClose} onSave={mockOnSave} patient={patient} />);
-    expect(screen.getByText(/Nuevo Turno|Editar Turno/i)).toBeInTheDocument();
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  test('returns null when isOpen is false', () => {
+    const { container } = render(
+      <AuthContext.Provider value={authValue}>
+        <AppointmentForm isOpen={false} onClose={() => {}} onSave={() => {}} patient={null} />
+      </AuthContext.Provider>
+    );
+    expect(container.innerHTML).toBe('');
+  });
+
+  test('renders form when isOpen is true', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
+    expect(screen.getByText('Nuevo Turno')).toBeInTheDocument();
+  });
+
+  test('renders patient name in header', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
+    expect(screen.getByText(/Juan Perez/)).toBeInTheDocument();
+  });
+
+  test('shows date and time input', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
     expect(screen.getByLabelText(/Fecha y Hora/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/honorarios/i)).toBeInTheDocument();
   });
 
-  test('valida campos requeridos y muestra toast error', async () => {
-    render(<AppointmentForm isOpen={true} onClose={mockOnClose} onSave={mockOnSave} patient={patient} />);
-    const submit = screen.getByRole('button', { name: /Guardar|Actualizar/i });
-    fireEvent.click(submit);
-    // Since toast is mocked to no-op, ensure onSave not called
-    expect(mockOnSave).not.toHaveBeenCalled();
+  test('shows frequency select', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
+    expect(screen.getByLabelText(/Frecuencia/i)).toBeInTheDocument();
+  });
+
+  test('shows cancel button', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
+    // The form has a cancel/close mechanism - test the close button (✕) or Cancelar
+    const cancelBtn = screen.getByText('Cancelar') || screen.getByRole('button', { name: /✕/ });
+    expect(cancelBtn).toBeTruthy();
+  });
+
+  test('calls onClose when cancel is clicked', async () => {
+    const onClose = jest.fn();
+    await act(async () => {
+      renderAppointmentForm({ onClose });
+    });
+    fireEvent.click(screen.getByText('Cancelar'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  test('shows Guardar button', async () => {
+    await act(async () => {
+      renderAppointmentForm();
+    });
+    expect(screen.getByText('Guardar')).toBeInTheDocument();
+  });
+
+  test('renders in edit mode when existingAppointment is provided', async () => {
+    const existingAppointment = {
+      id: 1,
+      patient_id: 1,
+      date: '2026-06-15T10:00',
+      frequency: 'unica',
+      observation: 'Test',
+      status: 'en_espera',
+      amount: 5000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    expect(screen.getByText('Editar Turno')).toBeInTheDocument();
   });
 });

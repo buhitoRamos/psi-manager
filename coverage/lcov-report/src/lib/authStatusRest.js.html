@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>8/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/9</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -84,38 +84,38 @@
 <a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// Consulta el estado de autenticación de un usuario en la tabla auth_status
 // Devuelve el registro o null si no existe
-export async function <span class="fstat-no" title="function not covered" >getAuthStatusByUserId(</span>user_id) {
-  const SUPABASE_URL = <span class="cstat-no" title="statement not covered" >(process.env.REACT_APP_SUPABASE_URL || 'https://ljynujodigqqujjvyoud.supabase.co').replace(/\/+$/,'');</span>
-  const SUPABASE_ANON_KEY = <span class="cstat-no" title="statement not covered" >process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqeW51am9kaWdxcXVqanZ5b3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MTY4NTAsImV4cCI6MjA3Njk5Mjg1MH0.oCSsBjWbZl7w81E67H3VV3in7gX5tJAVPWZM2EG9UEo';</span>
-  const headers = <span class="cstat-no" title="statement not covered" >{</span>
+export async function getAuthStatusByUserId(user_id) {
+  const SUPABASE_URL = (process.env.REACT_APP_SUPABASE_URL || <span class="branch-1 cbranch-no" title="branch not covered" >'https://ljynujodigqqujjvyoud.supabase.co')</span>.replace(/\/+$/,'');
+  const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || <span class="branch-1 cbranch-no" title="branch not covered" >'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqeW51am9kaWdxcXVqanZ5b3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MTY4NTAsImV4cCI6MjA3Njk5Mjg1MH0.oCSsBjWbZl7w81E67H3VV3in7gX5tJAVPWZM2EG9UEo';</span>
+  const headers = {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     Accept: 'application/json',
     'Content-Type': 'application/json'
   };
-  const path = <span class="cstat-no" title="statement not covered" >`/rest/v1/auth_status?select=id,user_id,status&amp;user_id=eq.${encodeURIComponent(user_id)}`;</span>
-  const url = <span class="cstat-no" title="statement not covered" >`${SUPABASE_URL}${path}`;</span>
-  const res = <span class="cstat-no" title="statement not covered" >await fetch(url, { method: 'GET', headers });</span>
-<span class="cstat-no" title="statement not covered" >  if (!res.ok) <span class="cstat-no" title="statement not covered" >throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);</span></span>
-  const json = <span class="cstat-no" title="statement not covered" >await res.json();</span>
-<span class="cstat-no" title="statement not covered" >  return Array.isArray(json) &amp;&amp; json.length &gt; 0 ? json[0] : null;</span>
+  const path = `/rest/v1/auth_status?select=id,user_id,status&amp;user_id=eq.${encodeURIComponent(user_id)}`;
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, { method: 'GET', headers });
+  if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  return Array.isArray(json) &amp;&amp; json.length &gt; 0 ? json[0] : null;
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -124,7 +124,7 @@ export async function <span class="fstat-no" title="function not covered" >getAu
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-28T23:48:04.502Z
+                at 2026-05-10T09:30:41.104Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
