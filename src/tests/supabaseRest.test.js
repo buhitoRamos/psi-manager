@@ -1,5 +1,6 @@
 // Tests for supabaseRest module
-// Full mock approach - named exports don't work with Babel ESM interop for mixed exports
+// Full mock approach since Babel ESM interop breaks named+default exports with real code
+
 jest.mock('../lib/supabaseRest', () => {
   const mk = (val) => jest.fn().mockResolvedValue(val);
   return {
@@ -10,10 +11,10 @@ jest.mock('../lib/supabaseRest', () => {
       updateUserPass: mk([{ id: 1 }]),
       deleteUser: mk([]),
       callRpc: mk({ result: 'ok' }),
-      authCheck: mk({ valid: true, user_id: 1 }),
+      authCheck: jest.fn().mockResolvedValue({ valid: true, user_id: 1 }),
       getPatientsByUserId: mk([{ id: 1, name: 'Juan' }]),
       updatePatient: mk([{ id: 1, name: 'Juan' }]),
-      createPatient: mk({ id: 1, name: 'Juan' }),
+      createPatient: jest.fn().mockResolvedValue({ id: 1, name: 'Juan' }),
       deletePatient: mk([]),
       createAppointment: mk([{ id: 1 }]),
       getAppointmentsByUserId: mk([]),
@@ -24,7 +25,6 @@ jest.mock('../lib/supabaseRest', () => {
       getPatientDebt: mk({ total: 0 }),
       getPatientsWithNextAppointmentManual: mk([]),
       deletePendingAppointmentsByPatient: mk([]),
-      createAppointmentFromPending: mk([{ id: 1 }]),
     },
   };
 });
@@ -34,7 +34,6 @@ import supabaseRest from '../lib/supabaseRest';
 describe('supabaseRest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Re-setup mock implementations after clearAllMocks
     supabaseRest.createPatient.mockResolvedValue({ id: 1, name: 'Juan' });
     supabaseRest.authCheck.mockResolvedValue({ valid: true, user_id: 1 });
   });
@@ -55,7 +54,7 @@ describe('supabaseRest', () => {
   });
 
   test('createAppointment is callable', async () => {
-    await supabaseRest.createAppointment({ patient_id: 1 });
+    await supabaseRest.createAppointment({ patient_id: 1, user_id: 1, date: '2026-06-15' });
     expect(supabaseRest.createAppointment).toHaveBeenCalled();
   });
 
@@ -70,7 +69,7 @@ describe('supabaseRest', () => {
   });
 
   test('createPayment is callable', async () => {
-    await supabaseRest.createPayment({ amount: 5000 });
+    await supabaseRest.createPayment({ amount: 5000, patient_id: 1 });
     expect(supabaseRest.createPayment).toHaveBeenCalled();
   });
 
@@ -85,8 +84,8 @@ describe('supabaseRest', () => {
   });
 
   test('authCheck is callable', async () => {
-    await supabaseRest.authCheck('test', 'pass');
-    expect(supabaseRest.authCheck).toHaveBeenCalledWith('test', 'pass');
+    await supabaseRest.authCheck('testuser', 'password');
+    expect(supabaseRest.authCheck).toHaveBeenCalledWith('testuser', 'password');
   });
 
   test('selectUsersByUser is callable', async () => {
