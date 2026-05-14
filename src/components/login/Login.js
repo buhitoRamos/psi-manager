@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import { authCheck } from '../../lib/supabaseRest';
+import { supabase } from '../../lib/supabaseClient';
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
 import { AuthContext } from '../../App';
 
@@ -41,16 +42,38 @@ function Login() {
       console.debug('[Login] authCheck result:', result);
       if (!result || !result.valid) throw new Error('Credenciales inválidas');
       const newToken = `user-${result.user_id}-${Date.now()}`;
+      // Obtener rol del usuario desde Supabase
+      let userRole = 'user';
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', result.user_id)
+          .single();
+        if (userData && userData.role) {
+          userRole = userData.role;
+        }
+      } catch (roleErr) {
+        console.warn('[Login] Could not fetch user role:', roleErr);
+      }
+
       // Verificar estado en auth_status antes de continuar
       const authStatus = await getAuthStatusByUserId(result.user_id);
       if (authStatus && authStatus.status === false) {
         setError('Usuario desactivado. Contacte al administrador.');
-        // Borra el token si existe
         handleAuth(null);
         return;
       }
-      handleAuth(newToken);
-      navigate('/dashboard');
+      // Guardar rol y redirigir según rol
+      if (userRole === 'admin') {
+        handleAuth(newToken);
+        localStorage.setItem('user_role', 'admin');
+        navigate('/admin');
+      } else {
+        handleAuth(newToken);
+        localStorage.removeItem('user_role');
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Error en el login');
     } finally {
