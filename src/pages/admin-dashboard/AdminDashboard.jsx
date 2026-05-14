@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../App';
-import { supabase } from '../../lib/supabaseClient';
 import AdminPayments from '../../components/AdminPayments/AdminPayments';
 import './AdminDashboard.css';
 
@@ -9,8 +8,6 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { handleAuth } = useContext(AuthContext);
   const [currentView, setCurrentView] = useState('payments');
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Verificar que el usuario tenga role admin
   useEffect(() => {
@@ -26,32 +23,6 @@ export default function AdminDashboard() {
     const match = token.match(/^user-(\d+)-/);
     if (match) adminId = match[1];
   }
-
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        let { data, error } = await supabase
-          .from('users')
-          .select('id, user, role')
-          .neq('role', 'admin')
-          .order('user', { ascending: true });
-
-        if (error) {
-          ({ data } = await supabase
-            .from('users')
-            .select('id, user')
-            .order('user', { ascending: true }));
-        }
-
-        setUsers(data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUsers();
-  }, []);
 
   const handleLogout = () => {
     handleAuth(null);

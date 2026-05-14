@@ -28,11 +28,6 @@ function Reports() {
 
   const userId = extractUserIdFromToken(token);
 
-  useEffect(() => {
-    if (tab === 'view') fetchReports();
-  }, [tab]);
-
-
   const fetchReports = async () => {
     setLoading(true);
     try {
@@ -45,6 +40,11 @@ function Reports() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (tab === 'view') fetchReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   // Update a report and refresh the list
   const handleUpdateReport = async (updated) => {

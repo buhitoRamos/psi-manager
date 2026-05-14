@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./dashboard.css";
 import { AuthContext } from "../../App";
@@ -27,10 +27,10 @@ const Dashboard = () => {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     handleAuth(null);
     navigate('/login');
-  };
+  }, [handleAuth, navigate]);
 
   const handleNavigateToTurnos = () => {
     setCurrentSection('turnos');

@@ -19,7 +19,9 @@ export default function AdminPayments({ user }) {
   const [allPayments, setAllPayments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('register');
+  // eslint-disable-next-line no-unused-vars
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  // eslint-disable-next-line no-unused-vars
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
   useEffect(() => {
