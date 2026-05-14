@@ -19,6 +19,14 @@ const Dashboard = () => {
   const [currentSection, setCurrentSection] = useState('patients');
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
 
+  // Redirigir al admin dashboard si el usuario tiene role admin
+  useEffect(() => {
+    const userRole = localStorage.getItem('user_role');
+    if (userRole === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [navigate]);
+
   const handleLogout = () => {
     handleAuth(null);
     navigate('/login');
@@ -54,14 +62,16 @@ useEffect(() => {
   }
   if (userId) {
     getAuthStatusByUserId(userId).then((result) => {
-      // Si el status es false, desloguea
+      // Si el status es false, desloguea inmediatamente
       if (result && result.status === false) {
         handleLogout();
       }
+    }).catch((err) => {
+      console.error('[Dashboard] Error checking auth status:', err);
     });
   }
   // eslint-disable-next-line
-});
+}, [handleLogout]);
 
   return (
     <div className="dashboard">

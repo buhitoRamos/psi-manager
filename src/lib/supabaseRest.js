@@ -909,8 +909,11 @@ const supabaseRest = {
   },
 
   // PROGRESS table helpers
-  async getProgressReports() {
-    const path = `/rest/v1/progress?select=id,created_at,dx_presumptive,dx_psychiatric,dx_semesterly,dx_annual,medication,patient:patients(id,name,last_name)`;
+  async getProgressReports(userId) {
+    let path = `/rest/v1/progress?select=id,created_at,dx_presumptive,dx_psychiatric,dx_semesterly,dx_annual,medication,patient:patients(id,name,last_name)&order=created_at.desc`;
+    if (userId) {
+      path += `&user_id=eq.${encodeURIComponent(userId)}`;
+    }
     const url = `${SUPABASE_URL}${path}`;
     const res = await fetch(url, { method: 'GET', headers: headers(null) });
     if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
@@ -946,6 +949,26 @@ async updateProgressReport(id, fields) {
   });
   if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
   return res.json();
+},
+
+// Elimina un informe de progreso por id
+async deleteProgressReport(id) {
+  const path = `/rest/v1/progress?id=eq.${id}`;
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      ...headers(null),
+      'Prefer': 'return=representation'
+    }
+  });
+  if (!res.ok) throw new Error(`Supabase DELETE ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  // Si RLS bloqueó el delete, devuelve array vacío
+  if (Array.isArray(json) && json.length === 0) {
+    throw new Error('No se pudo eliminar el informe. Verificá las políticas RLS en Supabase.');
+  }
+  return json;
 }
 
 };

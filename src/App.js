@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AppointmentsUpdateProvider } from './contexts/AppointmentsUpdateContext';
 import LoginPage from './pages/login-page/login';
 import Dashboard from './pages/dahboard-page/dashboard';
+import AdminDashboard from './pages/admin-dashboard/AdminDashboard';
 
 
 export const AuthContext = createContext(null);
@@ -19,6 +20,7 @@ function App() {
       setToken(newToken);
     } else {
       localStorage.removeItem('token');
+      localStorage.removeItem('user_role');
       setToken(null);
     }
     setIsAuthenticated(!!newToken);
@@ -44,9 +46,10 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
+              <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={localStorage.getItem('user_role') === 'admin' ? "/admin" : "/dashboard"} />} />
+              <Route path="/admin" element={isAuthenticated && localStorage.getItem('user_role') === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
               <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-              <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+              <Route path="/" element={<Navigate to={isAuthenticated ? (localStorage.getItem('user_role') === 'admin' ? "/admin" : "/dashboard") : "/login"} />} />
             </Routes>
             <Toaster 
               position="top-right"

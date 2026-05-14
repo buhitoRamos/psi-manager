@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import { authCheck } from '../../lib/supabaseRest';
+import { supabase } from '../../lib/supabaseClient';
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
 import { AuthContext } from '../../App';
 
@@ -41,16 +42,47 @@ function Login() {
       console.debug('[Login] authCheck result:', result);
       if (!result || !result.valid) throw new Error('Credenciales inválidas');
       const newToken = `user-${result.user_id}-${Date.now()}`;
+      // Obtener rol del usuario desde Supabase (columna role puede no existir aún)
+      let userRole = 'user';
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', result.user_id)
+          .single();
+        if (userData && userData.role) {
+          userRole = userData.role;
+        }
+      } catch (roleErr) {
+        // Columna role puede no existir aún — default a 'user'
+        console.warn('[Login] Could not fetch user role:', roleErr);
+      }
+
       // Verificar estado en auth_status antes de continuar
       const authStatus = await getAuthStatusByUserId(result.user_id);
       if (authStatus && authStatus.status === false) {
         setError('Usuario desactivado. Contacte al administrador.');
-        // Borra el token si existe
         handleAuth(null);
         return;
       }
+      // Si no hay registro en auth_status, crearlo como activo
+      if (!authStatus) {
+        try {
+          await supabase
+            .from('auth_status')
+            .insert([{ user_id: result.user_id, status: true }]);
+        } catch (insertErr) {
+          console.warn('[Login] Could not create auth_status row:', insertErr);
+        }
+      }
+      // Guardar rol y redirigir según rol
       handleAuth(newToken);
-      navigate('/dashboard');
+      localStorage.setItem('user_role', userRole || 'user');
+      if (userRole === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Error en el login');
     } finally {
