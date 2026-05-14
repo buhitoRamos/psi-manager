@@ -24,11 +24,21 @@ export default function AdminPayments({ user }) {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const { data, error } = await supabase
+        // Try with role column first; fall back to without if column doesn't exist yet
+        let data, error;
+        ({ data, error } = await supabase
           .from('users')
           .select('id, user, role')
           .neq('role', 'admin')
-          .order('user', { ascending: true });
+          .order('user', { ascending: true }));
+
+        if (error) {
+          // Column 'role' may not exist yet — fall back to basic query
+          ({ data, error } = await supabase
+            .from('users')
+            .select('id, user')
+            .order('user', { ascending: true }));
+        }
 
         if (error) {
           console.error('Error fetching users:', error);
@@ -159,25 +169,41 @@ export default function AdminPayments({ user }) {
 
   async function handleToggleUserStatus(userId, currentStatus) {
     try {
+      // Try to update existing row
       const { error } = await supabase
         .from('auth_status')
         .update({ status: !currentStatus })
         .eq('user_id', userId);
 
       if (error) {
-        console.error('Error toggling user status:', error);
-        toast.error('Error al actualizar estado');
-        return;
+        // Row may not exist — try to insert
+        const { error: insertError } = await supabase
+          .from('auth_status')
+          .insert([{ user_id: userId, status: !currentStatus }]);
+
+        if (insertError) {
+          console.error('Error toggling user status:', insertError);
+          toast.error('Error al actualizar estado');
+          return;
+        }
       }
 
       toast.success(currentStatus ? 'Usuario desactivado' : 'Usuario activado');
 
       // Refresh users
-      const { data, error: fetchError } = await supabase
+      let data, fetchError;
+      ({ data, error: fetchError } = await supabase
         .from('users')
         .select('id, user, role')
         .neq('role', 'admin')
-        .order('user', { ascending: true });
+        .order('user', { ascending: true }));
+
+      if (fetchError) {
+        ({ data } = await supabase
+          .from('users')
+          .select('id, user')
+          .order('user', { ascending: true }));
+      }
 
       if (!fetchError) setUsers(data || []);
     } catch (err) {
@@ -453,12 +479,13 @@ function UserStatusRow({ userId, userName, onToggle }) {
           .single();
 
         if (error || !data) {
-          setStatus(true); // Default to active if no record
+          // Table or row may not exist yet — default to active
+          setStatus(true);
         } else {
           setStatus(data.status);
         }
       } catch {
-        setStatus(true);
+        setStatus(true); // Default to active if table doesn't exist
       } finally {
         setLoading(false);
       }

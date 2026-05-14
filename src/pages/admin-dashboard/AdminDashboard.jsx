@@ -22,16 +22,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('users')
           .select('id, user, role')
           .neq('role', 'admin')
           .order('user', { ascending: true });
 
         if (error) {
-          console.error('Error fetching users:', error);
-          return;
+          ({ data } = await supabase
+            .from('users')
+            .select('id, user')
+            .order('user', { ascending: true }));
         }
+
         setUsers(data || []);
       } catch (err) {
         console.error(err);

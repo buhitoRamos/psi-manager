@@ -42,7 +42,7 @@ function Login() {
       console.debug('[Login] authCheck result:', result);
       if (!result || !result.valid) throw new Error('Credenciales inválidas');
       const newToken = `user-${result.user_id}-${Date.now()}`;
-      // Obtener rol del usuario desde Supabase
+      // Obtener rol del usuario desde Supabase (columna role puede no existir aún)
       let userRole = 'user';
       try {
         const { data: userData } = await supabase
@@ -54,6 +54,7 @@ function Login() {
           userRole = userData.role;
         }
       } catch (roleErr) {
+        // Columna role puede no existir aún — default a 'user'
         console.warn('[Login] Could not fetch user role:', roleErr);
       }
 
