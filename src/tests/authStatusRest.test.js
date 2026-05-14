@@ -15,8 +15,31 @@ describe('authStatusRest', () => {
     delete process.env.REACT_APP_SUPABASE_ANON_KEY;
   });
 
-  test('getAuthStatusByUserId returns auth status when found', async () => {
-    const mockData = [{ id: 1, user_id: '123', status: 'active' }];
+  test('getAuthStatusByUserId returns auth status when found via RPC', async () => {
+    const mockData = { id: 1, user_id: 123, status: true };
+    // RPC call returns data
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockData,
+      text: async () => '',
+      status: 200,
+    });
+
+    const result = await getAuthStatusByUserId('123');
+    expect(result).toEqual(mockData);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('getAuthStatusByUserId falls back to REST when RPC fails', async () => {
+    // RPC call fails
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('RPC error'); },
+      text: async () => 'Internal Server Error',
+    });
+    // REST fallback returns data
+    const mockData = [{ id: 1, user_id: 123, status: true }];
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockData,
@@ -26,10 +49,18 @@ describe('authStatusRest', () => {
 
     const result = await getAuthStatusByUserId('123');
     expect(result).toEqual(mockData[0]);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   test('getAuthStatusByUserId returns null when no data found', async () => {
+    // RPC returns empty
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+      text: async () => '',
+      status: 200,
+    });
+    // REST fallback also returns empty
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [],
@@ -41,7 +72,15 @@ describe('authStatusRest', () => {
     expect(result).toBeNull();
   });
 
-  test('getAuthStatusByUserId throws error on non-ok response', async () => {
+  test('getAuthStatusByUserId throws error when both RPC and REST fail', async () => {
+    // RPC call fails
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('RPC error'); },
+      text: async () => 'Internal Server Error',
+    });
+    // REST fallback also fails
     global.fetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -55,7 +94,7 @@ describe('authStatusRest', () => {
   test('getAuthStatusByUserId uses env variables for URL and key', async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [{ id: 1, user_id: '123', status: 'active' }],
+      json: async () => ({ id: 1, user_id: 123, status: true }),
       text: async () => '',
       status: 200,
     });
