@@ -13,3 +13,4 @@ GOOGLE_CREDENTIALS.md
 credentials/
 secrets/
 .aider*
+coverage/
