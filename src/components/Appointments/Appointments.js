@@ -25,6 +25,12 @@ function extractUserIdFromToken(token) {
 let deletePatientCalendarEvents = async () => null;
 let isAuthorized = () => false;
 
+// Lazy-load googleCalendar to avoid top-level await (breaks Jest)
+import('../../lib/googleCalendar').then(mod => {
+  deletePatientCalendarEvents = mod.deletePatientCalendarEvents;
+  isAuthorized = mod.isAuthorized;
+}).catch(() => {/* googleCalendar not available */});
+
 
 // Función para normalizar texto removiendo acentos/tildes
 function normalizeText(text) {
