@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'react-hot-toast';
+import { getAuthStatusByUserId, updateAuthStatus, insertAuthStatus } from '../../lib/authStatusRest';
 import './AdminPayments.css';
 
 export default function AdminPayments({ user }) {
@@ -169,26 +170,20 @@ export default function AdminPayments({ user }) {
 
   async function handleToggleUserStatus(userId, currentStatus) {
     try {
-      // Try to update existing row
-      const { error } = await supabase
-        .from('auth_status')
-        .update({ status: !currentStatus })
-        .eq('user_id', userId);
+      const newStatus = !currentStatus;
 
-      if (error) {
-        // Row may not exist — try to insert
-        const { error: insertError } = await supabase
-          .from('auth_status')
-          .insert([{ user_id: userId, status: !currentStatus }]);
+      // Primero verificar si ya existe un registro en auth_status
+      const existingStatus = await getAuthStatusByUserId(userId);
 
-        if (insertError) {
-          console.error('Error toggling user status:', insertError);
-          toast.error('Error al actualizar estado');
-          return;
-        }
+      if (existingStatus && existingStatus.id) {
+        // Actualizar registro existente usando REST
+        await updateAuthStatus(userId, newStatus);
+      } else {
+        // Crear nuevo registro usando REST
+        await insertAuthStatus(userId, newStatus);
       }
 
-      toast.success(currentStatus ? 'Usuario desactivado' : 'Usuario activado');
+      toast.success(newStatus ? 'Usuario activado' : 'Usuario desactivado');
 
       // Refresh users
       let data, fetchError;
@@ -209,6 +204,52 @@ export default function AdminPayments({ user }) {
     } catch (err) {
       console.error(err);
       toast.error('Error inesperado');
+    }
+  }
+
+  async function handleDeletePayment(paymentId) {
+    if (!window.confirm('¿Estás seguro de que querés eliminar este pago?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('admin_payments')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) {
+        console.error('Error deleting payment:', error);
+        toast.error('Error al eliminar pago');
+        return;
+      }
+
+      toast.success('Pago eliminado correctamente');
+
+      // Refresh payments in current view
+      if (viewMode === 'view') {
+        let query = supabase
+          .from('admin_payments')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (selectedUserId) {
+          query = query.eq('user_id', selectedUserId);
+        }
+        const { data } = await query;
+        setAllPayments(data || []);
+      } else if (viewMode === 'register' && selectedUserId) {
+        const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+        const endDate = new Date(selectedYear, selectedMonth, 1);
+        const { data } = await supabase
+          .from('admin_payments')
+          .select('*')
+          .eq('user_id', selectedUserId)
+          .gte('created_at', startDate.toISOString())
+          .lt('created_at', endDate.toISOString())
+          .order('created_at', { ascending: false });
+        setPayments(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error inesperado al eliminar');
     }
   }
 
@@ -348,6 +389,13 @@ export default function AdminPayments({ user }) {
                                 <div className={`payment-status ${payment.status || 'completed'}`}>
                                   {payment.status === 'completed' ? '✓' : 'P'}
                                 </div>
+                                <button
+                                  className="btn-delete-payment"
+                                  onClick={() => handleDeletePayment(payment.id)}
+                                  title="Eliminar pago"
+                                >
+                                  ✕
+                                </button>
                               </div>
                             );
                           })}
@@ -451,6 +499,13 @@ export default function AdminPayments({ user }) {
                             </div>
                           </div>
                           <div className="payment-amount">${parseFloat(p.amount).toFixed(2)}</div>
+                          <button
+                            className="btn-delete-payment"
+                            onClick={() => handleDeletePayment(p.id)}
+                            title="Eliminar pago"
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -472,17 +527,12 @@ function UserStatusRow({ userId, userName, onToggle }) {
   useEffect(() => {
     async function fetchStatus() {
       try {
-        const { data, error } = await supabase
-          .from('auth_status')
-          .select('status')
-          .eq('user_id', userId)
-          .single();
-
-        if (error || !data) {
-          // Table or row may not exist yet — default to active
-          setStatus(true);
-        } else {
+        const data = await getAuthStatusByUserId(userId);
+        if (data && data.status !== undefined) {
           setStatus(data.status);
+        } else {
+          // No hay registro — default a activo
+          setStatus(true);
         }
       } catch {
         setStatus(true); // Default to active if table doesn't exist

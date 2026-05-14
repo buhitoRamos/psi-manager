@@ -70,7 +70,7 @@ function ReportForm({ onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    onSubmit({ ...form, user_id: userId });
     setForm(initialForm);
     setSelectedPatient(null);
   };

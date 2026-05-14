@@ -65,14 +65,22 @@ function Login() {
         handleAuth(null);
         return;
       }
+      // Si no hay registro en auth_status, crearlo como activo
+      if (!authStatus) {
+        try {
+          await supabase
+            .from('auth_status')
+            .insert([{ user_id: result.user_id, status: true }]);
+        } catch (insertErr) {
+          console.warn('[Login] Could not create auth_status row:', insertErr);
+        }
+      }
       // Guardar rol y redirigir según rol
+      handleAuth(newToken);
+      localStorage.setItem('user_role', userRole || 'user');
       if (userRole === 'admin') {
-        handleAuth(newToken);
-        localStorage.setItem('user_role', 'admin');
         navigate('/admin');
       } else {
-        handleAuth(newToken);
-        localStorage.removeItem('user_role');
         navigate('/dashboard');
       }
     } catch (err) {

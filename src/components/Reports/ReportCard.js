@@ -3,7 +3,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './Reports.css';
 
-function ReportCard({ report, onUpdate }) {
+function ReportCard({ report, onUpdate, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ ...report });
@@ -114,7 +114,10 @@ function ReportCard({ report, onUpdate }) {
                   <span className="report-card-value" dangerouslySetInnerHTML={{ __html: localReport.medication }} />
                 </div>
               )}
-              <button className="report-card-edit-btn" onClick={() => setEdit(true)} style={{ marginTop: 8 }}>Editar</button>
+              <div className="report-card-actions">
+                <button className="report-card-edit-btn" onClick={() => setEdit(true)}>Editar</button>
+                <button className="report-card-delete-btn" onClick={() => onDelete && onDelete(report.id)}>Eliminar</button>
+              </div>
             </>
           )}
         </div>

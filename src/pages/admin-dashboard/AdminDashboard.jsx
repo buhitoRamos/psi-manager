@@ -12,6 +12,14 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Verificar que el usuario tenga role admin
+  useEffect(() => {
+    const userRole = localStorage.getItem('user_role');
+    if (userRole !== 'admin') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
+
   const token = localStorage.getItem('token');
   let adminId = null;
   if (token) {

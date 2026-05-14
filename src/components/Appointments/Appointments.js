@@ -80,7 +80,7 @@ function Appointments() {
   const [error, setError] = useState(null);
   const [, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('en_espera');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectKey, setSelectKey] = useState(0); // Para resetear el select
   const [confirmModal, setConfirmModal] = useState({

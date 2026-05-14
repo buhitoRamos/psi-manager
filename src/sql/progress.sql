@@ -8,6 +8,7 @@ create table if not exists public.progress (
   dx_semesterly text,
   dx_annual text,
   patient_id integer references patients(id) on delete set null,
+  user_id bigint references users(id) on delete cascade,
   medication text
 );
 
@@ -18,21 +19,24 @@ create table if not exists public.progress (
 alter table public.progress enable row level security;
 
 -- Eliminar policies si ya existen para evitar errores de duplicado
-
 drop policy if exists "Allow select for authenticated users" on public.progress;
 drop policy if exists "Allow insert for authenticated users" on public.progress;
 drop policy if exists "Allow update for authenticated users" on public.progress;
 drop policy if exists "Allow delete for authenticated users" on public.progress;
 drop policy if exists "Allow select for all" on public.progress;
+drop policy if exists "Allow insert for all" on public.progress;
+drop policy if exists "Allow update for all" on public.progress;
+drop policy if exists "Allow delete for all" on public.progress;
 
--- Policy para permitir SELECT a cualquier usuario (debug, no recomendado en producción)
+-- Policies para permitir acceso completo con anon key
 create policy "Allow select for all" on public.progress
-  for select
-  using (true);
+  for select using (true);
 
--- Exponer la tabla en la API REST
--- (Esto es automático en Supabase si la tabla está en el schema public y tienes policies)
+create policy "Allow insert for all" on public.progress
+  for insert with check (true);
 
--- Si necesitas exponer funciones personalizadas, crea las RPCs aquí
+create policy "Allow update for all" on public.progress
+  for update using (true) with check (true);
 
--- Listo para usar desde la API REST de Supabase
+create policy "Allow delete for all" on public.progress
+  for delete using (true);
