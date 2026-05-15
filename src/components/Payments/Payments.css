@@ -1,14 +1,18 @@
 /* Estilos para el componente Payments */
 .payments-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 1rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .payments-header {
   margin-bottom: 1.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .payments-header h2 {
@@ -25,17 +29,18 @@
 }
 
 .payments-controls {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem;
+  display: flex;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .payments-search {
   position: relative;
-  width: 100%;
-  max-width: 400px;
+  flex: 1;
+  min-width: 0;
 }
 
 .payments-search-input {
@@ -84,6 +89,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .payments-new-btn:hover {
@@ -95,8 +102,9 @@
 /* Grid de pagos */
 .payments-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+  max-width: 100%;
 }
 
 .payment-card {
@@ -106,6 +114,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   border-left: 4px solid #10b981;
+  display: flex;
+  flex-direction: column;
 }
 
 .payment-card:hover {
@@ -113,12 +123,13 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
+/* Fila superior: nombre a la izquierda, monto a la derecha */
 .payment-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+  gap: 0.75rem;
 }
 
 .patient-name {
@@ -126,18 +137,23 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .payment-amount {
   font-size: 1.2rem;
   font-weight: 700;
   white-space: nowrap;
+  color: #059669;
+  flex-shrink: 0;
 }
 
+/* Observación debajo del header */
 .payment-observation {
-  margin-bottom: 1rem;
-  padding: 0.8rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.8rem;
   background: #f8fafc;
   border-radius: 6px;
   border-left: 3px solid #e2e8f0;
@@ -155,13 +171,16 @@
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.4;
+  word-break: break-word;
 }
 
+/* Botones de acción alineados a la derecha */
 .payment-actions {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
   justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 0.75rem;
 }
 
 .payment-edit-btn,
@@ -173,9 +192,10 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  white-space: nowrap;
 }
 
 .payment-edit-btn {
@@ -287,22 +307,19 @@
 /* Media queries responsive */
 @media (max-width: 900px) {
   .payments-controls {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .payments-new-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
   }
   
   .payments-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .payment-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-  
-  .payment-amount {
-    font-size: 1.1rem;
   }
 }
 
@@ -317,6 +334,16 @@
   
   .payment-card {
     padding: 1rem;
+  }
+  
+  .payment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .payment-amount {
+    align-self: flex-end;
   }
   
   .payment-actions {

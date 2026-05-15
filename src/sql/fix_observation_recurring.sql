@@ -1,18 +1,22 @@
--- PASO 1: Ejecutar este script primero para limpiar funciones duplicadas
--- Ejecutar en consola SQL de Supabase
+-- ============================================================
+-- FIX: Observaciones solo en el primer turno recurrente
+-- ============================================================
+-- Problema: Al crear turnos recurrentes, la observación se copiaba
+-- a TODOS los turnos. La observación solo debe guardarse en el 
+-- PRIMER turno (consulta inicial), los recurrentes deben tener NULL.
+--
+-- Este script:
+-- 1. Reemplaza la función create_recurring_appointments con la versión corregida
+-- 2. Limpia las observaciones duplicadas en los datos existentes
+-- ============================================================
 
--- Eliminar todas las versiones existentes de las funciones con todos los posibles argumentos
+-- PASO 1: Eliminar TODAS las versiones existentes de la función
 DROP FUNCTION IF EXISTS create_recurring_appointments(BIGINT, BIGINT, TIMESTAMPTZ, TEXT, TEXT, DECIMAL, TEXT) CASCADE;
 DROP FUNCTION IF EXISTS create_recurring_appointments(BIGINT, BIGINT, TIMESTAMPTZ, TEXT, TEXT, DECIMAL, TEXT, BOOLEAN) CASCADE;
 DROP FUNCTION IF EXISTS create_recurring_appointments_v2 CASCADE;
-DROP FUNCTION IF EXISTS delete_recurring_appointments CASCADE;
-DROP FUNCTION IF EXISTS delete_appointments_by_date_range CASCADE;
-DROP FUNCTION IF EXISTS delete_pending_appointments_by_patient_v2 CASCADE;
-
--- También eliminar cualquier otra versión que pueda existir
 DROP FUNCTION IF EXISTS create_recurring_appointments CASCADE;
 
--- Función RPC para crear turnos recurrentes (compatible con autenticación personalizada)
+-- PASO 2: Crear la función corregida
 CREATE OR REPLACE FUNCTION create_recurring_appointments(
   patient_id_param BIGINT,
   user_id_param BIGINT,
@@ -40,7 +44,7 @@ DECLARE
   end_date TIMESTAMPTZ;
   increment_days INTEGER;
   appointment_count INTEGER := 0;
-  max_appointments INTEGER := 52; -- Máximo de turnos por año
+  max_appointments INTEGER := 52;
   new_appointment_id BIGINT;
   appointment_date_temp TIMESTAMPTZ;
   existing_deleted_count INTEGER := 0;
@@ -61,14 +65,14 @@ BEGIN
       AND a.user_id = user_id_param 
       AND a.status = 'en_espera'
       AND a.date >= start_date_param
-      AND a.frequency IN ('semanal', 'quincenal', 'mensual'); -- No eliminar únicos
+      AND a.frequency IN ('semanal', 'quincenal', 'mensual');
     
     GET DIAGNOSTICS existing_deleted_count = ROW_COUNT;
     
     RAISE NOTICE 'Eliminados % turnos recurrentes existentes', existing_deleted_count;
   END IF;
 
-  -- Si es único, crear solo un turno
+  -- Si es único, crear solo un turno (con observación completa)
   IF frequency_param = 'unica' THEN
     INSERT INTO appointments (patient_id, user_id, date, frequency, status, amount, observation)
     VALUES (patient_id_param, user_id_param, start_date_param, frequency_param, status_param, amount_param, observation_param)
@@ -153,75 +157,47 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Función para eliminar turnos pendientes por paciente (compatible con autenticación personalizada)
-CREATE OR REPLACE FUNCTION delete_pending_appointments_by_patient_v2(
-  patient_id_param BIGINT,
-  user_id_param BIGINT
-)
-RETURNS TABLE(
-  deleted_count INTEGER,
-  deleted_ids BIGINT[]
-) AS $$
-DECLARE
-  deleted_appointment_ids BIGINT[];
-  total_deleted INTEGER;
-BEGIN
-  -- Verificar que el usuario tenga acceso al paciente
-  IF NOT EXISTS (
-    SELECT 1 FROM patients p
-    WHERE p.id = patient_id_param 
-    AND p.user_id = user_id_param
-  ) THEN
-    RAISE EXCEPTION 'No tienes acceso a este paciente o el paciente no existe';
-  END IF;
-
-  -- Eliminar solo turnos pendientes del paciente especificado
-  WITH deleted_rows AS (
-    DELETE FROM appointments a
-    WHERE a.patient_id = patient_id_param 
-      AND a.user_id = user_id_param
-      AND a.status = 'en_espera'
-    RETURNING a.id
-  )
-  SELECT array_agg(id) INTO deleted_appointment_ids FROM deleted_rows;
-
-  -- Contar cuántos se eliminaron
-  total_deleted := COALESCE(array_length(deleted_appointment_ids, 1), 0);
-
-  RETURN QUERY SELECT total_deleted, COALESCE(deleted_appointment_ids, ARRAY[]::BIGINT[]);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Grant permissions
 GRANT EXECUTE ON FUNCTION create_recurring_appointments TO authenticated;
-GRANT EXECUTE ON FUNCTION delete_pending_appointments_by_patient_v2 TO anon;
-GRANT EXECUTE ON FUNCTION delete_pending_appointments_by_patient_v2 TO authenticated;
+GRANT EXECUTE ON FUNCTION create_recurring_appointments TO anon;
 
--- Configurar RLS para trabajar con autenticación personalizada
-ALTER TABLE IF EXISTS patients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS appointments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS payments ENABLE ROW LEVEL SECURITY;
+-- ============================================================
+-- PASO 3: Limpiar observaciones duplicadas en datos existentes
+-- ============================================================
+-- Para cada paciente con turnos recurrentes, mantener la observación
+-- solo en el primer turno (el de fecha más antigua) y limpiar los demás.
+-- 
+-- IMPORTANTE: Esto solo limpia las observaciones que fueron copiadas
+-- a todos los turnos recurrentes. Las observaciones individuales 
+-- (agregadas manualmente a un turno específico) NO se tocan.
+-- ============================================================
 
--- Políticas permisivas para autenticación personalizada
-DROP POLICY IF EXISTS "allow_anon_patients" ON patients;
-CREATE POLICY "allow_anon_patients" ON patients
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+-- Primero, identificar los turnos recurrentes que tienen la misma observación
+-- que el primer turno del mismo paciente y frecuencia
+WITH first_appointment AS (
+  SELECT 
+    a.patient_id,
+    a.user_id,
+    a.frequency,
+    a.observation AS first_observation,
+    MIN(a.id) AS first_appointment_id
+  FROM appointments a
+  WHERE a.frequency IN ('semanal', 'quincenal', 'mensual')
+    AND a.observation IS NOT NULL
+  GROUP BY a.patient_id, a.user_id, a.frequency, a.observation
+)
+UPDATE appointments a
+SET observation = NULL
+FROM first_appointment fa
+WHERE a.patient_id = fa.patient_id
+  AND a.user_id = fa.user_id
+  AND a.frequency = fa.frequency
+  AND a.observation = fa.first_observation
+  AND a.id != fa.first_appointment_id;
 
-DROP POLICY IF EXISTS "allow_anon_appointments" ON appointments;
-CREATE POLICY "allow_anon_appointments" ON appointments
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "allow_anon_payments" ON payments;
-CREATE POLICY "allow_anon_payments" ON payments
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-
--- Mensajes de confirmación
-DO $$
-BEGIN
-    RAISE NOTICE '✅ Funciones limpiadas y recreadas correctamente.';
-    RAISE NOTICE '✅ create_recurring_appointments con parámetro clear_existing disponible.';
-    RAISE NOTICE '✅ delete_pending_appointments_by_patient_v2 disponible.';
-    RAISE NOTICE '✅ Políticas RLS configuradas para autenticación personalizada.';
-    RAISE NOTICE 'ℹ️  Crear turnos: SELECT * FROM create_recurring_appointments(patient_id, user_id, start_date, frequency, status, amount, observation, clear_existing);';
-    RAISE NOTICE 'ℹ️  Eliminar turnos pendientes: SELECT * FROM delete_pending_appointments_by_patient_v2(patient_id, user_id);';
-END $$;
+-- Verificar: mostrar cuántos turnos recurrentes aún tienen observación
+-- (deberían ser solo los primeros turnos de cada grupo)
+-- SELECT patient_id, frequency, COUNT(*) as with_observation 
+-- FROM appointments 
+-- WHERE observation IS NOT NULL AND frequency IN ('semanal', 'quincenal', 'mensual')
+-- GROUP BY patient_id, frequency;
