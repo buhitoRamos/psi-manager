@@ -106,6 +106,16 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
             <span className="menu-icon">🗓️</span>
             Google Calendar
           </button>
+          <a
+            className="menu-item"
+            href="https://wa.me/5491139050391?text=Hola%2C%20necesito%20soporte%20con%20Psi%20Manager"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setIsOpen(false)}
+          >
+            <span className="menu-icon">💬</span>
+            Soporte
+          </a>
           <button className="menu-item logout" onClick={handleLogout}>
             <span className="menu-icon">🚪</span>
             Cerrar Sesión
