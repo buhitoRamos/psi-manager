@@ -9,6 +9,7 @@ import Reports from "../../components/Reports/Reports";
 import Earnings from "../../components/Earnings/Earnings";
 import Menu from "../../components/Menu/Menu";
 import GoogleCalendarSettings from "../../components/GoogleCalendarSettings/GoogleCalendarSettings";
+import ChangePassword from "../../components/ChangePassword/ChangePassword";
 import { getAuthStatusByUserId } from '../../lib/authStatusRest';
 
 
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const { handleAuth } = useContext(AuthContext);
   const [currentSection, setCurrentSection] = useState('patients');
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Redirigir al admin dashboard si el usuario tiene role admin
   useEffect(() => {
@@ -94,6 +96,7 @@ useEffect(() => {
           onNavigateToPatients={handleNavigateToPatients}
           onNavigateToPayments={handleNavigateToPayments}
           onOpenGoogleCalendarSettings={() => setShowGoogleCalendarSettings(true)}
+          onChangePassword={() => setShowChangePassword(true)}
         />
       </header>
       <main className="dashboard-content">
@@ -125,6 +128,9 @@ useEffect(() => {
       </main>
       {showGoogleCalendarSettings && (
         <GoogleCalendarSettings isOpen={showGoogleCalendarSettings} onClose={() => setShowGoogleCalendarSettings(false)} />
+      )}
+      {showChangePassword && (
+        <ChangePassword onClose={() => setShowChangePassword(false)} />
       )}
     </div>
   );

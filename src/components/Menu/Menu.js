@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports, onNavigateToEarnings }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports, onNavigateToEarnings, onChangePassword }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
@@ -105,6 +105,10 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
           <button className="menu-item" onClick={() => { setIsOpen(false); if (onOpenGoogleCalendarSettings) onOpenGoogleCalendarSettings(); }}>
             <span className="menu-icon">🗓️</span>
             Google Calendar
+          </button>
+          <button className="menu-item" onClick={() => { setIsOpen(false); if (onChangePassword) onChangePassword(); }}>
+            <span className="menu-icon">🔑</span>
+            Cambiar Clave
           </button>
           <a
             className="menu-item"
