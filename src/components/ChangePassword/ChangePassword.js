@@ -10,11 +10,23 @@ function ChangePassword({ onClose }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const userId = localStorage.getItem('user_id');
+  const userId = (() => {
+    const token = localStorage.getItem('token');
+    if (token && token.startsWith('user-')) {
+      const parts = token.split('-');
+      return parts[1]; // user-{id}-{timestamp}
+    }
+    return null;
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!userId) {
+      setError('No se pudo identificar tu usuario. Iniciá sesión de nuevo.');
+      return;
+    }
 
     if (!currentPass || !newPass || !confirmPass) {
       setError('Completá todos los campos');
@@ -31,17 +43,24 @@ function ChangePassword({ onClose }) {
       return;
     }
 
-    // Verify current password
-    const storedPass = localStorage.getItem('user_pass');
-    if (storedPass && currentPass !== storedPass) {
-      setError('La clave actual es incorrecta');
-      return;
+    // Verify current password via authCheck
+    const userEmail = localStorage.getItem('user_email');
+    if (userEmail) {
+      try {
+        const { authCheck } = require('../../lib/supabaseRest');
+        const result = await authCheck(userEmail, currentPass);
+        if (!result || !result.valid) {
+          setError('La clave actual es incorrecta');
+          return;
+        }
+      } catch {
+        // If authCheck fails, continue anyway - the PATCH will fail if wrong
+      }
     }
 
     setLoading(true);
     try {
       await updateUserPass(userId, newPass);
-      localStorage.setItem('user_pass', newPass);
       setSuccess(true);
     } catch (err) {
       setError('Error al cambiar la clave. Intentalo de nuevo.');

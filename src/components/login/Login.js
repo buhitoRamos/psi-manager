@@ -78,6 +78,7 @@ function Login() {
       // Guardar rol y redirigir según rol
       handleAuth(newToken);
       localStorage.setItem('user_role', userRole || 'user');
+      localStorage.setItem('user_email', email);
       if (userRole === 'admin') {
         navigate('/admin');
       } else {
