@@ -133,6 +133,15 @@ function Login() {
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? 'Ingresando...' : 'Entrar'}
           </button>
+
+          <a
+            className="login-support-link"
+            href="https://wa.me/5491139050391?text=Hola%2C%20quiero%20darme%20de%20alta%20en%20Psi%20Manager"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            📱 ¿No tenés cuenta? <strong>Darte de alta por WhatsApp</strong>
+          </a>
         </div>
       </form>
     </div>
