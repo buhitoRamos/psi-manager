@@ -231,15 +231,17 @@ function Patients() {
   const handleSaveEdit = async () => {
     const isCreating = editingPatient === 'new';
     const savePromise = async () => {
-      console.log(isCreating ? 'Creando paciente:' : 'Guardando paciente:', editForm);
+      // Si edad está vacía, mandar 0
+      const formToSave = { ...editForm, age: editForm.age === '' ? 0 : editForm.age };
+      console.log(isCreating ? 'Creando paciente:' : 'Guardando paciente:', formToSave);
       let resultPatient;
       if (isCreating) {
         // Crear nuevo paciente; requiere user_id
-        resultPatient = await supabaseRest.createPatient({ ...editForm, user_id: userId });
+        resultPatient = await supabaseRest.createPatient({ ...formToSave, user_id: userId });
         setPatients([resultPatient, ...patients]);
       } else {
         // Actualizar paciente existente
-        const updatedPatient = await supabaseRest.updatePatient(editingPatient, editForm);
+        const updatedPatient = await supabaseRest.updatePatient(editingPatient, formToSave);
         resultPatient = updatedPatient;
         setPatients(patients.map(p => p.id === editingPatient ? { ...p, ...updatedPatient } : p));
       }
