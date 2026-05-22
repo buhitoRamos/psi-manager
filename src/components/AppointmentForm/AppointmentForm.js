@@ -145,8 +145,8 @@ function AppointmentForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.date || !formData.amount) {
-      toast.error('Por favor complete los campos obligatorios (fecha y honorarios)', {
+    if (!formData.amount) {
+      toast.error('Por favor complete el campo obligatorio (honorarios)', {
         duration: 3000,
         icon: '⚠️'
       });
@@ -161,7 +161,7 @@ function AppointmentForm({
           ...formData,
           patient_id: patient.id,
           amount: parseFloat(formData.amount),
-          date: new Date(formData.date).toISOString()
+          ...(formData.date ? { date: new Date(formData.date).toISOString() } : {})
         };
         // Procesar el pago si el checkbox está marcado y no estaba pagado antes
         const shouldProcessPayment = localPaymentChecked && !isPaid && formData.amount > 0;
@@ -170,14 +170,14 @@ function AppointmentForm({
         return;
       }
 
-      // Para turnos nuevos, verificar si es recurrente
-      if (formData.frequency === 'unica') {
+      // Para turnos nuevos, verificar si es recurrente (solo si tiene fecha)
+      if (formData.frequency === 'unica' || !formData.date) {
         // Crear solo un turno
         const appointmentData = {
           ...formData,
           patient_id: patient.id,
           amount: parseFloat(formData.amount),
-          date: new Date(formData.date).toISOString()
+          ...(formData.date ? { date: new Date(formData.date).toISOString() } : {})
         };
         await onSave(appointmentData, false, localAddToCalendar);
       } else {
@@ -281,14 +281,13 @@ function AppointmentForm({
         <form onSubmit={handleSubmit} className="appointment-form">
           <div className="form-grid">
             <div className="form-field">
-              <label htmlFor="date">Fecha y Hora *</label>
+              <label htmlFor="date">Fecha y Hora</label>
               <input
                 type="datetime-local"
                 id="date"
                 value={formData.date}
                 onChange={(e) => handleChange('date', e.target.value)}
                 className="form-input"
-                required
               />
             </div>
 
