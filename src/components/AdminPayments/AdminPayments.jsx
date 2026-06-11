@@ -32,7 +32,7 @@ export default function AdminPayments({ user }) {
         ({ data, error } = await supabase
           .from('users')
           .select('id, user, role')
-          .neq('role', 'admin')
+          .or('role.neq.admin,role.is.null')
           .order('user', { ascending: true }));
 
         if (error) {
@@ -192,7 +192,7 @@ export default function AdminPayments({ user }) {
       ({ data, error: fetchError } = await supabase
         .from('users')
         .select('id, user, role')
-        .neq('role', 'admin')
+        .or('role.neq.admin,role.is.null')
         .order('user', { ascending: true }));
 
       if (fetchError) {
