@@ -272,4 +272,125 @@ describe('AppointmentForm component', () => {
     const guardarBtn = screen.getByText('Guardar');
     expect(guardarBtn).toBeInTheDocument();
   });
+
+  // --- Timezone fix tests ---
+
+  test('editing an appointment with UTC date shows local time, not UTC time', async () => {
+    // Simulate a date stored as UTC: 2026-06-15T18:00:00.000Z
+    // In UTC-3 (Argentina), this should display as 15:00 (15hs local)
+    // NOT as 18:00 (which was the old buggy behavior)
+    const utcDate = '2026-06-15T18:00:00.000Z';
+    const existingAppointment = {
+      id: 1,
+      patient_id: 1,
+      date: utcDate,
+      frequency: 'unica',
+      observation: '',
+      status: 'en_espera',
+      amount: 5000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    const dateInput = screen.getByLabelText(/Fecha y Hora/i);
+    // The displayed time should be the local time, not the raw UTC substring
+    // new Date('2026-06-15T18:00:00.000Z') in Argentina (UTC-3) => 2026-06-15T15:00
+    const expectedDate = new Date(utcDate);
+    const year = expectedDate.getFullYear();
+    const month = String(expectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(expectedDate.getDate()).padStart(2, '0');
+    const hours = String(expectedDate.getHours()).padStart(2, '0');
+    const minutes = String(expectedDate.getMinutes()).padStart(2, '0');
+    const expectedLocalStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+    expect(dateInput.value).toBe(expectedLocalStr);
+    // Also verify it does NOT show the raw UTC hour (18:00)
+    expect(dateInput.value).not.toBe('2026-06-15T18:00');
+  });
+
+  test('editing an appointment with a non-Z ISO string still works', async () => {
+    // Some backends may return dates without Z suffix, e.g. '2026-06-15T10:30:00'
+    // The Date constructor still parses this as local time
+    const localDate = '2026-06-15T10:30:00';
+    const existingAppointment = {
+      id: 2,
+      patient_id: 1,
+      date: localDate,
+      frequency: 'unica',
+      observation: '',
+      status: 'en_espera',
+      amount: 3000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    const dateInput = screen.getByLabelText(/Fecha y Hora/i);
+    // When the date has no timezone indicator, Date parses it as local,
+    // so the display should match the input time
+    const expectedDate = new Date(localDate);
+    const year = expectedDate.getFullYear();
+    const month = String(expectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(expectedDate.getDate()).padStart(2, '0');
+    const hours = String(expectedDate.getHours()).padStart(2, '0');
+    const minutes = String(expectedDate.getMinutes()).padStart(2, '0');
+    const expectedLocalStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+    expect(dateInput.value).toBe(expectedLocalStr);
+  });
+
+  test('editing an appointment with null/empty date does not crash', async () => {
+    const existingAppointment = {
+      id: 3,
+      patient_id: 1,
+      date: null,
+      frequency: 'unica',
+      observation: '',
+      status: 'en_espera',
+      amount: 5000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    const dateInput = screen.getByLabelText(/Fecha y Hora/i);
+    expect(dateInput.value).toBe('');
+  });
+
+  test('editing an appointment with empty string date does not crash', async () => {
+    const existingAppointment = {
+      id: 4,
+      patient_id: 1,
+      date: '',
+      frequency: 'unica',
+      observation: '',
+      status: 'en_espera',
+      amount: 5000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    const dateInput = screen.getByLabelText(/Fecha y Hora/i);
+    expect(dateInput.value).toBe('');
+  });
+
+  test('editing appointment preserves other fields when date is converted', async () => {
+    const utcDate = '2026-07-20T14:00:00.000Z';
+    const existingAppointment = {
+      id: 5,
+      patient_id: 1,
+      date: utcDate,
+      frequency: 'quincenal',
+      observation: 'Sesión de seguimiento',
+      status: 'finalizado',
+      amount: 15000,
+    };
+    await act(async () => {
+      renderAppointmentForm({ existingAppointment });
+    });
+    const freqSelect = screen.getByLabelText(/Frecuencia/i);
+    expect(freqSelect.value).toBe('quincenal');
+    const statusSelect = screen.getByLabelText(/Estado del Turno/i);
+    expect(statusSelect.value).toBe('finalizado');
+    const amountInput = screen.getByLabelText(/honorarios/i);
+    expect(amountInput.value).toBe('15000');
+    const textarea = screen.getByPlaceholderText(/observaci/i) || screen.getByLabelText(/Observaci/i);
+    expect(textarea.value).toBe('Sesión de seguimiento');
+  });
 });
