@@ -108,9 +108,21 @@ function AppointmentForm({
       
       if (existingAppointment) {
         // Modo edición: cargar datos existentes
+        // Convertir la fecha UTC a hora local para el input datetime-local
+        let localDateStr = '';
+        if (existingAppointment.date) {
+          const utcDate = new Date(existingAppointment.date);
+          // Formatear a datetime-local: YYYY-MM-DDTHH:mm en zona horaria local
+          const year = utcDate.getFullYear();
+          const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+          const day = String(utcDate.getDate()).padStart(2, '0');
+          const hours = String(utcDate.getHours()).padStart(2, '0');
+          const minutes = String(utcDate.getMinutes()).padStart(2, '0');
+          localDateStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
         setFormData({
           patient_id: patient?.id || existingAppointment.patient_id,
-          date: existingAppointment.date ? existingAppointment.date.substring(0, 16) : '',
+          date: localDateStr,
           frequency: existingAppointment.frequency || 'unica',
           observation: existingAppointment.observation || '',
           status: existingAppointment.status || 'en_espera',
