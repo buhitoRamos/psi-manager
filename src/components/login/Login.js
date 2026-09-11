@@ -250,6 +250,14 @@ function Login() {
                 ¿No tenés cuenta? <strong>Crear cuenta gratis</strong>
               </button>
             )}
+            <a
+              className="login-support-link"
+              href="https://wa.me/5491139050391?text=Hola%2C%20quiero%20soporte%20de%20Psi%20Manager"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              📱 Soporte Técnico
+            </a>
           </div>
         </div>
       </form>
