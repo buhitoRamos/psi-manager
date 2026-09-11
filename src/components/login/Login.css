@@ -159,3 +159,33 @@
   margin-top: 12px;
   text-align: center;
 }
+
+.password-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #223;
+  font-size: 14px;
+}
+.password-input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: 8px;
+}
+.password-input-wrapper input {
+  flex: 1;
+  margin-top: 0 !important;
+}
+.password-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
