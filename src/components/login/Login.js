@@ -15,12 +15,13 @@ function Login() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dni, setDni] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
     if (isRegistering) {
-      if (!email || !password || !firstName || !lastName || !dni) {
+      if (!email || !password || !firstName || !lastName || !dni || !phone) {
         setError('Por favor completa todos los campos.');
         return false;
       }
@@ -68,6 +69,7 @@ function Login() {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
             dni: dni.trim(),
+            phone: phone.trim(),
             role: 'user',
           },
         ])
@@ -221,6 +223,15 @@ function Login() {
                   value={dni}
                   onChange={(e) => setDni(e.target.value)}
                   placeholder="DNI"
+                />
+              </label>
+              <label>
+                Teléfono
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="549..."
                 />
               </label>
             </>
