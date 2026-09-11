@@ -139,3 +139,23 @@
     transform: translateY(-6px);
   }
 }
+
+.login-toggle-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 16px;
+  text-align: center;
+  transition: color 0.2s;
+}
+.login-toggle-btn:hover {
+  color: #2563eb;
+}
+.login-footer {
+  margin-top: 12px;
+  text-align: center;
+}
