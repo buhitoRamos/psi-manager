@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'react-hot-toast';
 import { getAuthStatusByUserId, updateAuthStatus, insertAuthStatus } from '../../lib/authStatusRest';
+import ConfirmModal from '../ConfirmModal/ConfirmModal';
 import './AdminPayments.css';
 
 export default function AdminPayments({ user }) {
@@ -18,7 +19,14 @@ export default function AdminPayments({ user }) {
   const [payments, setPayments] = useState([]);
   const [allPayments, setAllPayments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
   const [viewMode, setViewMode] = useState('register');
+  const [deleteUserModal, setDeleteUserModal] = useState({
+    isOpen: false,
+    userId: null,
+    userName: '',
+  });
+  const [deletingUser, setDeletingUser] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   // eslint-disable-next-line no-unused-vars
@@ -209,6 +217,54 @@ export default function AdminPayments({ user }) {
     }
   }
 
+  async function handleDeleteUser(userId, userName) {
+    setDeleteUserModal({ isOpen: true, userId, userName });
+  }
+
+  async function confirmDeleteUser() {
+    const { userId, userName } = deleteUserModal;
+    if (!userId) return;
+
+    setDeletingUser(true);
+    try {
+      // Usar RPC SECURITY DEFINER para eliminar en cascada (bypassea RLS)
+      const { error } = await supabase.rpc('delete_user_cascade', {
+        user_id_param: userId,
+      });
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast.error('Error al eliminar usuario');
+        return;
+      }
+
+      toast.success(`Usuario "${userName}" eliminado correctamente`);
+
+      // Refrescar lista de usuarios
+      let data, fetchError;
+      ({ data, error: fetchError } = await supabase
+        .from('users')
+        .select('id, user, role')
+        .or('role.neq.admin,role.is.null')
+        .order('user', { ascending: true }));
+
+      if (fetchError) {
+        ({ data } = await supabase
+          .from('users')
+          .select('id, user')
+          .order('user', { ascending: true }));
+      }
+
+      if (!fetchError) setUsers(data || []);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error inesperado al eliminar usuario');
+    } finally {
+      setDeletingUser(false);
+      setDeleteUserModal({ isOpen: false, userId: null, userName: '' });
+    }
+  }
+
   async function handleDeletePayment(paymentId) {
     if (!window.confirm('¿Estás seguro de que querés eliminar este pago?')) return;
 
@@ -252,6 +308,67 @@ export default function AdminPayments({ user }) {
     } catch (err) {
       console.error(err);
       toast.error('Error inesperado al eliminar');
+    }
+  }
+
+  async function handleBackup() {
+    setBackingUp(true);
+    try {
+      // Tablas de la base de datos a respaldar
+      const tables = [
+        'users',
+        'patients',
+        'appointments',
+        'contributions',
+        'progress',
+        'admin_payments',
+        'auth_status',
+      ];
+
+      const backup = {};
+      const errors = [];
+
+      for (const table of tables) {
+        try {
+          const { data, error } = await supabase.from(table).select('*');
+          if (error) {
+            errors.push(`${table}: ${error.message}`);
+            continue;
+          }
+          backup[table] = data || [];
+        } catch (err) {
+          errors.push(`${table}: ${err.message}`);
+        }
+      }
+
+      if (Object.keys(backup).length === 0) {
+        toast.error('No se pudo obtener ningún dato para el backup');
+        return;
+      }
+
+      // Descargar como archivo JSON
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${timestamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (errors.length > 0) {
+        toast.error(`Backup parcial: ${errors.length} tabla(s) con error`);
+        console.warn('Errores de backup:', errors);
+      } else {
+        toast.success('Backup descargado correctamente');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al generar el backup');
+    } finally {
+      setBackingUp(false);
     }
   }
 
@@ -307,6 +424,14 @@ export default function AdminPayments({ user }) {
         >
           Gestionar Usuarios
         </button>
+        <button
+          className="tab-button backup-button"
+          onClick={handleBackup}
+          disabled={backingUp}
+          title="Descargar backup de la base de datos"
+        >
+          {backingUp ? 'Generando...' : '💾 Backup'}
+        </button>
       </div>
 
       <div className="payments-container">
@@ -319,7 +444,13 @@ export default function AdminPayments({ user }) {
                 <p className="no-payments">No hay usuarios registrados</p>
               ) : (
                 users.map((u) => (
-                  <UserStatusRow key={u.id} userId={u.id} userName={u.user} onToggle={handleToggleUserStatus} />
+                  <UserStatusRow
+                    key={u.id}
+                    userId={u.id}
+                    userName={u.user}
+                    onToggle={handleToggleUserStatus}
+                    onDelete={handleDeleteUser}
+                  />
                 ))
               )}
             </div>
@@ -518,11 +649,22 @@ export default function AdminPayments({ user }) {
           </>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={deleteUserModal.isOpen}
+        onClose={() => setDeleteUserModal({ isOpen: false, userId: null, userName: '' })}
+        onConfirm={confirmDeleteUser}
+        title="Eliminar usuario"
+        message={`¿Estás seguro de eliminar al usuario "${deleteUserModal.userName}"?\n\nSe eliminarán en cascada:\n- Pacientes\n- Turnos (appointments)\n- Pagos (admin_payments)\n- Contribuciones\n- Progreso\n- Estado de acceso\n\nEsta acción NO se puede deshacer.`}
+        confirmText={deletingUser ? 'Eliminando...' : 'Eliminar'}
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }
 
-function UserStatusRow({ userId, userName, onToggle }) {
+function UserStatusRow({ userId, userName, onToggle, onDelete }) {
   const [status, setStatus] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -560,12 +702,21 @@ function UserStatusRow({ userId, userName, onToggle }) {
           {status ? '✓ Activo' : '✗ Inactivo'}
         </span>
       </div>
-      <button
-        className={`toggle-btn ${status ? 'btn-deactivate' : 'btn-activate'}`}
-        onClick={handleToggle}
-      >
-        {status ? 'Desactivar' : 'Activar'}
-      </button>
+      <div className="user-row-actions">
+        <button
+          className={`toggle-btn ${status ? 'btn-deactivate' : 'btn-activate'}`}
+          onClick={handleToggle}
+        >
+          {status ? 'Desactivar' : 'Activar'}
+        </button>
+        <button
+          className="toggle-btn btn-delete-user"
+          onClick={() => onDelete(userId, userName)}
+          title="Eliminar usuario y todos sus datos"
+        >
+          Eliminar
+        </button>
+      </div>
     </div>
   );
 }

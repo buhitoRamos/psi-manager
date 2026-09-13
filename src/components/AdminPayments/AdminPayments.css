@@ -37,6 +37,23 @@
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
+.tab-button.backup-button {
+  flex: 0 0 auto;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tab-button.backup-button:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+
+.tab-button.backup-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .payments-container {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
@@ -414,6 +431,27 @@
 
 .btn-activate:hover {
   background: rgba(16, 185, 129, 0.25);
+}
+
+.user-row-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-delete-user {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-delete-user:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.btn-delete-user:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-delete-payment {
