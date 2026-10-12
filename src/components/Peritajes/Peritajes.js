@@ -55,6 +55,7 @@ const emptyForm = {
   nombre: '',
   apellido: '',
   fechaPericia: '',
+  fechaMaximaEntrega: '',
   conclusion: '',
   // juzgado
   fuero: '',
@@ -67,8 +68,7 @@ const emptyForm = {
   // estado
   estado: '',
   importeDepositado: '',
-  fechaDeposito: '',
-  fechaEntrevista: ''
+  fechaDeposito: ''
 };
 
 function Peritajes() {
@@ -149,6 +149,7 @@ function Peritajes() {
       nombre: peritado.nombre || '',
       apellido: peritado.apellido || '',
       fechaPericia: toDateInput(peritado.fechaPericia),
+      fechaMaximaEntrega: toDateInput(peritado.fechaMaximaEntrega),
       conclusion: peritado.conclusion || '',
       fuero: juzgado?.fuero || '',
       distrito: juzgado?.distrito || '',
@@ -159,8 +160,7 @@ function Peritajes() {
       fechaFinalizado: toDateInput(juzgado?.fechaFinalizado),
       estado: estado?.estado || '',
       importeDepositado: estado?.importeDepositado != null ? String(estado.importeDepositado) : '',
-      fechaDeposito: toDateInput(estado?.fechaDeposito),
-      fechaEntrevista: toDateInput(estado?.fechaEntrevista)
+      fechaDeposito: toDateInput(estado?.fechaDeposito)
     });
     setFormOpen(true);
   }
@@ -192,6 +192,7 @@ function Peritajes() {
           nombre: form.nombre.trim(),
           apellido: form.apellido.trim(),
           fechaPericia: form.fechaPericia || null,
+          fechaMaximaEntrega: form.fechaMaximaEntrega || null,
           conclusion: form.conclusion.trim() || ''
         });
 
@@ -211,8 +212,7 @@ function Peritajes() {
           await supabaseRest.updateEstado(estado.id, {
             estado: form.estado.trim(),
             importeDepositado: form.importeDepositado ? Number(form.importeDepositado) : null,
-            fechaDeposito: form.fechaDeposito || null,
-            fechaEntrevista: form.fechaEntrevista || null
+            fechaDeposito: form.fechaDeposito || null
           });
         }
 
@@ -223,6 +223,7 @@ function Peritajes() {
           nombre: form.nombre.trim(),
           apellido: form.apellido.trim(),
           fechaPericia: form.fechaPericia || null,
+          fechaMaximaEntrega: form.fechaMaximaEntrega || null,
           conclusion: form.conclusion.trim() || '',
           userID: userId
         });
@@ -243,7 +244,6 @@ function Peritajes() {
           estado: form.estado.trim(),
           importeDepositado: form.importeDepositado ? Number(form.importeDepositado) : null,
           fechaDeposito: form.fechaDeposito || null,
-          fechaEntrevista: form.fechaEntrevista || null,
           peritadoID: peritado.id,
           juzgadoID: juzgado.id,
           userID: userId
@@ -346,12 +346,20 @@ function Peritajes() {
             return (
               <div key={p.id} className="peritado-card">
                 <div className="peritado-header">
-                  <h4 className="peritado-name">{p.nombre} {p.apellido}</h4>
+                  <h4 className="peritado-name">{juzgado?.numeroExpediente || 'Sin expediente'}</h4>
                 </div>
                 <div className="peritado-body">
                   <div className="peritado-field">
                     <span className="peritado-label">Fecha de pericia</span>
                     <span className="peritado-value">{formatDate(p.fechaPericia)}</span>
+                  </div>
+                  <div className="peritado-field">
+                    <span className="peritado-label">Estado</span>
+                    <span className="peritado-value">{estado?.estado || '—'}</span>
+                  </div>
+                  <div className="peritado-field">
+                    <span className="peritado-label">Fecha máxima de entrega</span>
+                    <span className="peritado-value">{formatDate(p.fechaMaximaEntrega)}</span>
                   </div>
                   {p.conclusion && (
                     <div className="peritado-field">
@@ -359,21 +367,18 @@ function Peritajes() {
                       <span className="peritado-value">{p.conclusion}</span>
                     </div>
                   )}
-                  {juzgado && (
+                  {juzgado && (juzgado.fuero || juzgado.distrito) && (
                     <div className="peritado-field">
                       <span className="peritado-label">Juzgado</span>
                       <span className="peritado-value">
-                        {[juzgado.fuero, juzgado.distrito, juzgado.numeroExpediente].filter(Boolean).join(' · ') || '—'}
+                        {[juzgado.fuero, juzgado.distrito].filter(Boolean).join(' · ') || '—'}
                       </span>
                     </div>
                   )}
-                  {estado && (
+                  {estado && estado.importeDepositado != null && (
                     <div className="peritado-field">
-                      <span className="peritado-label">Estado</span>
-                      <span className="peritado-value">
-                        {estado.estado || '—'}
-                        {estado.importeDepositado != null ? ` · ${formatCurrency(estado.importeDepositado)}` : ''}
-                      </span>
+                      <span className="peritado-label">Importe depositado</span>
+                      <span className="peritado-value">{formatCurrency(estado.importeDepositado)}</span>
                     </div>
                   )}
                 </div>
@@ -418,6 +423,10 @@ function Peritajes() {
                     <label>Fecha de pericia</label>
                     <input type="date" value={form.fechaPericia} onChange={(e) => handleChange('fechaPericia', e.target.value)} />
                   </div>
+                  <div className="form-group">
+                    <label>Fecha máxima de entrega</label>
+                    <input type="date" value={form.fechaMaximaEntrega} onChange={(e) => handleChange('fechaMaximaEntrega', e.target.value)} />
+                  </div>
                   <div className="form-group full-width">
                     <label>Conclusión</label>
                     <textarea rows="3" value={form.conclusion} onChange={(e) => handleChange('conclusion', e.target.value)} placeholder="Conclusión del peritaje (opcional)" />
@@ -431,7 +440,15 @@ function Peritajes() {
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Fuero</label>
-                    <input type="text" value={form.fuero} onChange={(e) => handleChange('fuero', e.target.value)} />
+                    <select value={form.fuero} onChange={(e) => handleChange('fuero', e.target.value)}>
+                      <option value="">Seleccionar fuero...</option>
+                      <option value="Fuero Laboral">Fuero Laboral</option>
+                      <option value="Fuero Penal">Fuero Penal</option>
+                      <option value="Fuero de Familia">Fuero de Familia</option>
+                      <option value="Fuero Contencioso Administrativo">Fuero Contencioso Administrativo</option>
+                      <option value="Fuero de la Seguridad Social">Fuero de la Seguridad Social</option>
+                      <option value="Fueros Federales">Fueros Federales</option>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label>Distrito</label>
@@ -481,10 +498,6 @@ function Peritajes() {
                   <div className="form-group">
                     <label>Fecha de depósito</label>
                     <input type="date" value={form.fechaDeposito} onChange={(e) => handleChange('fechaDeposito', e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label>Fecha de entrevista</label>
-                    <input type="date" value={form.fechaEntrevista} onChange={(e) => handleChange('fechaEntrevista', e.target.value)} />
                   </div>
                 </div>
               </div>

@@ -72,9 +72,9 @@ src/
 
 Existen 3 tablas nuevas relacionadas con peritajes (todas con RLS deshabilitado y FK a `users(id)` vía columna `userID`):
 
-- **`peritado`**: la persona peritada. Columnas: `id`, `created_at`, `nombre`, `apellido`, `fechaPericia` (timestamp), `conclusion`, `peritadoID`, `juzgadoID`, `userID`, `estadoID`.
+- **`peritado`**: la persona peritada. Columnas: `id`, `created_at`, `nombre`, `apellido`, `fechaPericia` (timestamp), `fechaMaximaEntrega` (timestamp), `conclusion`, `peritadoID`, `juzgadoID`, `userID`, `estadoID`.
 - **`juzgado`**: el juzgado del caso. Columnas: `id`, `created_at`, `fuero`, `distrito`, `nombreJuez`, `apellidoJuez`, `numeroExpediente`, `fechaAceptado`, `fechaFinalizado`, `peritadoID`, `estadoID`, `userID`.
-- **`estado`**: estado/seguimiento del peritaje. Columnas: `id`, `created_at`, `importeDepositado` (bigint), `fechaDeposito`, `estado`, `fechaEntrevista`, `juzgadoID`, `peritadoID`, `userID`.
+- **`estado`**: estado/seguimiento del peritaje. Columnas: `id`, `created_at`, `importeDepositado` (bigint), `fechaDeposito`, `estado`, `juzgadoID`, `peritadoID`, `userID`. (La columna `fechaEntrevista` fue eliminada: la fecha de entrevista es la misma que `fechaPericia` en `peritado`.)
 
 **Relaciones (FK)**: `peritado` ↔ `juzgado` (bidireccional), `peritado` ↔ `estado`, `juzgado` ↔ `estado`. Todas referencian `users(id)` por `userID`.
 
