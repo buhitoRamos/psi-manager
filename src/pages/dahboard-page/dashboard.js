@@ -7,6 +7,7 @@ import Appointments from "../../components/Appointments/Appointments";
 import Payments from "../../components/Payments/Payments";
 import Reports from "../../components/Reports/Reports";
 import Earnings from "../../components/Earnings/Earnings";
+import Peritajes from "../../components/Peritajes/Peritajes";
 import Menu from "../../components/Menu/Menu";
 import GoogleCalendarSettings from "../../components/GoogleCalendarSettings/GoogleCalendarSettings";
 import ChangePassword from "../../components/ChangePassword/ChangePassword";
@@ -53,6 +54,10 @@ const Dashboard = () => {
     setCurrentSection('earnings');
   }
 
+  const handleNavigateToPeritajes = () => {
+    setCurrentSection('peritajes');
+  }
+
 useEffect(() => {
   const token = localStorage.getItem('token');
   let userId = null;
@@ -86,6 +91,7 @@ useEffect(() => {
             {currentSection === 'patients' && <span className="section-indicator">- Pacientes</span>}
             {currentSection === 'pagos' && <span className="section-indicator">- Pagos</span>}
             {currentSection === 'reports' && <span className="section-indicator">- Informes</span>}
+            {currentSection === 'peritajes' && <span className="section-indicator">- Peritajes</span>}
           </div>
         </div>
         <Menu 
@@ -95,6 +101,7 @@ useEffect(() => {
           onNavigateToTurnos={handleNavigateToTurnos}
           onNavigateToPatients={handleNavigateToPatients}
           onNavigateToPayments={handleNavigateToPayments}
+          onNavigateToPeritajes={handleNavigateToPeritajes}
           onOpenGoogleCalendarSettings={() => setShowGoogleCalendarSettings(true)}
           onChangePassword={() => setShowChangePassword(true)}
         />
@@ -123,6 +130,11 @@ useEffect(() => {
         {currentSection === 'earnings' && (
           <section className="earnings-section">
             <Earnings />
+          </section>
+        )}
+        {currentSection === 'peritajes' && (
+          <section className="peritajes-section">
+            <Peritajes />
           </section>
         )}
       </main>

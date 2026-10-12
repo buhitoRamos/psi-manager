@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import './Menu.css';
 
-function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports, onNavigateToEarnings, onChangePassword }) {
+function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateToPayments, onOpenGoogleCalendarSettings, onNavigateToReports, onNavigateToEarnings, onNavigateToPeritajes, onChangePassword }) {
   const [isOpen, setIsOpen] = useState(false);
   
   console.log('Menu component rendered'); // Debug log
+
+  const userRole = localStorage.getItem('user_role');
 
   const toggleMenu = () => {
     console.log('Toggle menu clicked, isOpen:', !isOpen); // Debug log
@@ -60,6 +62,13 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
     }
   };
 
+  const handlePeritajes = () => {
+    setIsOpen(false);
+    if (onNavigateToPeritajes) {
+      onNavigateToPeritajes();
+    }
+  };
+
   return (
     <div className="menu-container">
       {/* Botón hamburguesa */}
@@ -102,6 +111,12 @@ function Menu({ onLogout, onNavigateToTurnos, onNavigateToPatients, onNavigateTo
             <span className="menu-icon">💹</span>
             Ganancias
           </button>
+          {userRole === 'google' && (
+            <button className="menu-item" onClick={handlePeritajes}>
+              <span className="menu-icon">⚖️</span>
+              Peritajes
+            </button>
+          )}
           <button className="menu-item" onClick={() => { setIsOpen(false); if (onOpenGoogleCalendarSettings) onOpenGoogleCalendarSettings(); }}>
             <span className="menu-icon">🗓️</span>
             Google Calendar

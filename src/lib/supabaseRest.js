@@ -969,7 +969,138 @@ async deleteProgressReport(id) {
     throw new Error('No se pudo eliminar el informe. Verificá las políticas RLS en Supabase.');
   }
   return json;
-}
+},
+
+  // ============================================================
+  // PERITAJES (tablas peritado, juzgado, estado)
+  // Nota: estas tablas usan `userID` (camelCase) como FK a users(id).
+  // ============================================================
+
+  async getPeritadosByUserId(userId) {
+    const path = `/rest/v1/peritado?userID=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'GET', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  async createPeritado(data) {
+    const path = `/rest/v1/peritado`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async updatePeritado(id, data) {
+    const path = `/rest/v1/peritado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async deletePeritado(id) {
+    const path = `/rest/v1/peritado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'DELETE', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase DELETE ${res.status}: ${await res.text()}`);
+    return true;
+  },
+
+  async getJuzgadosByUserId(userId) {
+    const path = `/rest/v1/juzgado?userID=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'GET', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  async createJuzgado(data) {
+    const path = `/rest/v1/juzgado`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async updateJuzgado(id, data) {
+    const path = `/rest/v1/juzgado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async deleteJuzgado(id) {
+    const path = `/rest/v1/juzgado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'DELETE', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase DELETE ${res.status}: ${await res.text()}`);
+    return true;
+  },
+
+  async getEstadosByUserId(userId) {
+    const path = `/rest/v1/estado?userID=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'GET', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase GET ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  async createEstado(data) {
+    const path = `/rest/v1/estado`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase POST ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async updateEstado(id, data) {
+    const path = `/rest/v1/estado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...headers('application/json'), 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json[0] : json;
+  },
+
+  async deleteEstado(id) {
+    const path = `/rest/v1/estado?id=eq.${encodeURIComponent(id)}`;
+    const url = `${SUPABASE_URL}${path}`;
+    const res = await fetch(url, { method: 'DELETE', headers: headers(null) });
+    if (!res.ok) throw new Error(`Supabase DELETE ${res.status}: ${await res.text()}`);
+    return true;
+  }
 
 };
 
