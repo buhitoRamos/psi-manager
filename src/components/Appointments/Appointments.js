@@ -360,24 +360,31 @@ function Appointments() {
       const paymentMessage = shouldProcessPayment ? ' y pago registrado' : '';
       toast.success(`✅ Turno actualizado${paymentMessage} para ${patient.name}`);
       if (addToCalendar) {
-        try {
-          await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
-          toast.success('Turno actualizado en Google Calendar');
-        } catch (calendarError) {
-          if (calendarError.message && calendarError.message.includes('no está lista')) {
-            const reconnected = await reconnectGoogleCalendar();
-            if (reconnected) {
-              try {
-                await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
-                toast.success('Turno actualizado en Google Calendar (tras reconexión)');
-              } catch (err2) {
-                toast.error('No se pudo actualizar en Google Calendar tras reconexión');
+        // Verificar si Google Calendar está conectado antes de sincronizar
+        if (!isAuthorized()) {
+          toast.error('⚠️ Google Calendar está desconectado. Actívalo en Configuración para sincronizar.', {
+            duration: 5000,
+          });
+        } else {
+          try {
+            await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
+            toast.success('Turno actualizado en Google Calendar');
+          } catch (calendarError) {
+            if (calendarError.message && calendarError.message.includes('no está lista')) {
+              const reconnected = await reconnectGoogleCalendar();
+              if (reconnected) {
+                try {
+                  await createCalendarEvent({ ...updatedAppointment, user_id: userId }, patient);
+                  toast.success('Turno actualizado en Google Calendar (tras reconexión)');
+                } catch (err2) {
+                  toast.error('No se pudo actualizar en Google Calendar tras reconexión');
+                }
+              } else {
+                toast.error('No se pudo reconectar Google Calendar');
               }
             } else {
-              toast.error('No se pudo reconectar Google Calendar');
+              toast.error('No se pudo actualizar en Google Calendar');
             }
-          } else {
-            toast.error('No se pudo actualizar en Google Calendar');
           }
         }
       }
@@ -405,32 +412,36 @@ function Appointments() {
         // Recargar lista de turnos
         const refreshedAppointments = await supabaseRest.getAppointmentsByUserId(userId);
         setAppointments(refreshedAppointments || []);
-        // Google Calendar: solo si addToCalendar está activo
-        if (addToCalendar && Array.isArray(result.appointments)) {
-          // Si se está reemplazando, eliminar primero los eventos viejos
-          if (shouldClearExisting) {
-            try {
-              if (isAuthorized()) {
+        // Google Calendar: solo si addToCalendar está activo y Google Calendar está conectado
+        if (addToCalendar) {
+          if (!isAuthorized()) {
+            toast.error('⚠️ Google Calendar está desconectado. Actívalo en Configuración para sincronizar.', {
+              duration: 5000,
+            });
+          } else if (Array.isArray(result.appointments)) {
+            // Si se está reemplazando, eliminar primero los eventos viejos
+            if (shouldClearExisting) {
+              try {
                 await deletePatientCalendarEvents(patient);
                 toast.success('Eventos viejos eliminados de Google Calendar');
+              } catch (err) {
+                toast.error('No se pudieron eliminar los eventos viejos de Google Calendar');
               }
-            } catch (err) {
-              toast.error('No se pudieron eliminar los eventos viejos de Google Calendar');
             }
-          }
-          try {
-            const { createRecurringCalendarEvents } = await import('../../lib/googleCalendar');
-            const res = await createRecurringCalendarEvents(
-              result.appointments.map(apt => ({ ...apt, user_id: userId })),
-              patient
-            );
-            if (res && res.created) {
-              toast.success(`Turnos añadidos a Google Calendar (${res.created} creados${res.errors ? ', ' + res.errors + ' errores' : ''})`);
-            } else {
-              toast.error('No se pudieron añadir los turnos a Google Calendar');
+            try {
+              const { createRecurringCalendarEvents } = await import('../../lib/googleCalendar');
+              const res = await createRecurringCalendarEvents(
+                result.appointments.map(apt => ({ ...apt, user_id: userId })),
+                patient
+              );
+              if (res && res.created) {
+                toast.success(`Turnos añadidos a Google Calendar (${res.created} creados${res.errors ? ', ' + res.errors + ' errores' : ''})`);
+              } else {
+                toast.error('No se pudieron añadir los turnos a Google Calendar');
+              }
+            } catch (calendarError) {
+              toast.error('No se pudo agregar a Google Calendar (bloque)');
             }
-          } catch (calendarError) {
-            toast.error('No se pudo agregar a Google Calendar (bloque)');
           }
         }
       } catch (error) {

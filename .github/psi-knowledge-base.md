@@ -179,6 +179,13 @@ const { data, error } = await supabase
 - **Patrones usados**: Validación frontend con `toast.error`, comparación de timestamps con `getTime()`
 - **Decisiones**: Se implementó la validación en el frontend (AppointmentForm) para dar feedback inmediato al usuario, sin necesidad de hacer una query extra a la base de datos. La lista de turnos ya está cargada en memoria.
 
+### 2026-11-07 - Validación de conexión Google Calendar antes de sincronizar
+- **Descripción**: Antes de intentar sincronizar turnos con Google Calendar (crear, editar, eliminar), el sistema ahora verifica si la conexión está activa usando `isAuthorized()`. Si está desconectado, muestra un toast informativo pidiendo al usuario que active Google Calendar desde Configuración, y **no intenta cargar los turnos** en el calendario.
+- **Archivos**: 
+  - `src/components/Appointments/Appointments.js` — validación previa en `processSaveEdit` (crear/editar) y en eliminación masiva/individual
+- **Patrones usados**: Early return con `toast.error`, verificación de estado con `isAuthorized()`
+- **Decisiones**: Se prefirió mostrar un mensaje claro al usuario en lugar de intentar reconectar automáticamente, para que el usuario sea consciente de que debe reactivar la conexión.
+
 ---
 
 ## 🤔 Decisiones Técnicas
