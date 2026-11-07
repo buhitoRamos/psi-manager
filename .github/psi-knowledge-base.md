@@ -163,11 +163,13 @@ const { data, error } = await supabase
 
 > Registrar aquí cada feature nuevo con fecha y detalles.
 
-### 2026-XX-XX - Template Feature
-- **Descripción**: Descripción del feature
-- **Archivos**: `src/components/Nuevo/Nuevo.js`
-- **Patrones usados**: Context, Debounce, etc.
-- **Decisiones**: Por qué se implementó así
+### 2026-11-07 - Información completa del paciente en Turnos Programados
+- **Descripción**: Al seleccionar un paciente en la sección "Turnos Programados", ahora se muestra una tarjeta con todos los datos del paciente (teléfono, email, dirección, edad, obra social, motivo, deuda y próxima cita).
+- **Archivos**: 
+  - `src/components/Appointments/Appointments.js` — cambio de `getPatientsByUserId` a `getPatientsWithNextAppointment`, agregado de tarjeta `patient-info-card`
+  - `src/components/Appointments/Appointments.css` — estilos responsive para la tarjeta
+- **Patrones usados**: Reutilización de RPC existente (`getPatientsWithNextAppointment`), grid CSS responsive, animación fade-in
+- **Decisiones**: Se reutilizó el método `getPatientsWithNextAppointment` (que ya traía deuda y próxima cita) en lugar de `getPatientsByUserId`, evitando duplicar lógica y manteniendo consistencia con el módulo de pacientes.
 
 ---
 

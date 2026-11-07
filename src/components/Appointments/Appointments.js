@@ -57,12 +57,12 @@ function Appointments() {
   const [userId, setUserId] = useState(null);
   const [patientsList, setPatientsList] = useState([]);
 
-  // Cargar pacientes para el selector al tener userId
+  // Cargar pacientes para el selector al tener userId (con info completa: deuda, próxima cita, etc.)
   useEffect(() => {
     async function loadPatients() {
       if (!userId) return;
       try {
-        const patients = await supabaseRest.getPatientsByUserId(userId);
+        const patients = await supabaseRest.getPatientsWithNextAppointment(userId);
         setPatientsList(Array.isArray(patients) ? patients : []);
       } catch (err) {
         toast.error('No se pudieron cargar los pacientes');
@@ -848,6 +848,74 @@ function Appointments() {
             <span className="add-btn-icon">➕</span> <span>Agregar Turno</span>
           </button>
         </div>
+        {/* Información completa del paciente seleccionado */}
+        {selectedPatient && (
+          <div className="patient-info-card">
+            <div className="patient-info-header">
+              <h3 className="patient-info-name">
+                {selectedPatient.name} {selectedPatient.last_name}
+              </h3>
+              {selectedPatient.hasDebt && selectedPatient.debt > 0 && (
+                <span className="patient-info-debt-badge">
+                  ⚠️ Debe: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(selectedPatient.debt)}
+                </span>
+              )}
+            </div>
+            <div className="patient-info-grid">
+              {selectedPatient.tel && (
+                <div className="patient-info-item">
+                  <span className="patient-info-label">📞 Teléfono</span>
+                  <span className="patient-info-value">{selectedPatient.tel}</span>
+                </div>
+              )}
+              {selectedPatient.email && (
+                <div className="patient-info-item">
+                  <span className="patient-info-label">📧 Email</span>
+                  <span className="patient-info-value">{selectedPatient.email}</span>
+                </div>
+              )}
+              {selectedPatient.dir && (
+                <div className="patient-info-item">
+                  <span className="patient-info-label">🏠 Dirección</span>
+                  <span className="patient-info-value">{selectedPatient.dir}</span>
+                </div>
+              )}
+              {selectedPatient.age && (
+                <div className="patient-info-item">
+                  <span className="patient-info-label">⏳ Edad</span>
+                  <span className="patient-info-value">{selectedPatient.age}</span>
+                </div>
+              )}
+              {selectedPatient.health_insurance && (
+                <div className="patient-info-item">
+                  <span className="patient-info-label">🏥 Obra Social</span>
+                  <span className="patient-info-value">{selectedPatient.health_insurance}</span>
+                </div>
+              )}
+              {selectedPatient.reason && (
+                <div className="patient-info-item patient-info-item-full">
+                  <span className="patient-info-label">📝 Motivo</span>
+                  <span className="patient-info-value">{selectedPatient.reason}</span>
+                </div>
+              )}
+              {selectedPatient.nextAppointment && (
+                <div className="patient-info-item patient-info-item-full">
+                  <span className="patient-info-label">📅 Próxima Cita</span>
+                  <span className="patient-info-value patient-info-next-appointment">
+                    {new Date(selectedPatient.nextAppointment.date).toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Controles de filtrado */}
         <div className="appointments-controls appointments-controls-row">
           <div className="appointments-search-flex-group">

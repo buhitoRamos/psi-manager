@@ -211,6 +211,96 @@
   margin: 14px 0 18px 0;
 }
 
+/* Tarjeta de información del paciente seleccionado */
+.patient-info-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #e8f4fd 100%);
+  border: 2px solid #d1e3f8;
+  border-radius: 14px;
+  padding: 1.2rem 1.5rem;
+  margin: 0 0 1.2rem 0;
+  box-shadow: 0 4px 16px rgba(52, 152, 219, 0.08);
+  animation: fadeInCard 0.3s ease-out;
+}
+
+@keyframes fadeInCard {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.patient-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #c8e0f7;
+}
+
+.patient-info-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.patient-info-debt-badge {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid #fbbf24;
+  white-space: nowrap;
+}
+
+.patient-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem 1.2rem;
+}
+
+.patient-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.patient-info-item-full {
+  grid-column: 1 / -1;
+}
+
+.patient-info-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #7b8a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.patient-info-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #34495e;
+  word-break: break-word;
+}
+
+.patient-info-next-appointment {
+  color: #2980b9;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .patient-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .patient-info-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
 .appointments-patient-select-wrapper {
   position: relative;
   min-width: 210px;
