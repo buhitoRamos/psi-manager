@@ -14,3 +14,6 @@ credentials/
 secrets/
 .aider*
 coverage/
+
+# VS Code MCP config
+.vscode/mcp.json
