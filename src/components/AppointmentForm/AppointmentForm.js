@@ -71,6 +71,7 @@ function AppointmentForm({
   onSave, 
   patient, 
   existingAppointment = null, 
+  existingAppointments = [],
   isPaid = false, 
   onPaymentChange = null, 
   addToCalendar = true, 
@@ -154,6 +155,24 @@ function AppointmentForm({
     }));
   };
 
+  // Función para verificar si ya existe un turno idéntico
+  const isDuplicateAppointment = (patientId, dateStr, frequency, excludeId = null) => {
+    if (!dateStr || !patientId || !existingAppointments.length) return false;
+    const newDate = new Date(dateStr);
+    const newDateTime = newDate.getTime();
+    return existingAppointments.some(apt => {
+      if (excludeId && apt.id === excludeId) return false;
+      if (apt.patient_id !== patientId) return false;
+      const aptDate = new Date(apt.date).getTime();
+      // Para turnos únicos: misma fecha y hora exacta
+      if (frequency === 'unica') {
+        return aptDate === newDateTime && apt.frequency === 'unica';
+      }
+      // Para turnos recurrentes: misma fecha de inicio y misma frecuencia
+      return aptDate === newDateTime && apt.frequency === frequency;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -175,10 +194,29 @@ function AppointmentForm({
           amount: parseFloat(formData.amount),
           ...(formData.date ? { date: new Date(formData.date).toISOString() } : {})
         };
+        // Verificar duplicado al editar (excluyendo el turno actual)
+        if (formData.date && isDuplicateAppointment(patient.id, formData.date, formData.frequency, existingAppointment.id)) {
+          toast.error('Ya existe un turno idéntico para este paciente en esa fecha y hora.', {
+            duration: 4000,
+            icon: '⚠️'
+          });
+          setLoading(false);
+          return;
+        }
         // Procesar el pago si el checkbox está marcado y no estaba pagado antes
         const shouldProcessPayment = localPaymentChecked && !isPaid && formData.amount > 0;
         await onSave(appointmentData, shouldProcessPayment, localAddToCalendar);
         onClose();
+        return;
+      }
+
+      // Para turnos nuevos, verificar duplicado antes de crear
+      if (formData.date && isDuplicateAppointment(patient.id, formData.date, formData.frequency)) {
+        toast.error('Ya existe un turno idéntico para este paciente en esa fecha y hora.', {
+          duration: 4000,
+          icon: '⚠️'
+        });
+        setLoading(false);
         return;
       }
 

@@ -171,6 +171,14 @@ const { data, error } = await supabase
 - **Patrones usados**: Reutilización de RPC existente (`getPatientsWithNextAppointment`), grid CSS responsive, animación fade-in
 - **Decisiones**: Se reutilizó el método `getPatientsWithNextAppointment` (que ya traía deuda y próxima cita) en lugar de `getPatientsByUserId`, evitando duplicar lógica y manteniendo consistencia con el módulo de pacientes.
 
+### 2026-11-07 - Prevención de turnos duplicados
+- **Descripción**: El sistema ahora valida que no se puedan crear turnos idénticos (mismo paciente, misma fecha/hora y misma frecuencia). Si se detecta un duplicado, se muestra un mensaje de error con toast y se bloquea la creación.
+- **Archivos**: 
+  - `src/components/AppointmentForm/AppointmentForm.js` — función `isDuplicateAppointment()` que compara fecha, hora, paciente y frecuencia contra `existingAppointments`
+  - `src/components/Appointments/Appointments.js` — paso de prop `existingAppointments` al formulario
+- **Patrones usados**: Validación frontend con `toast.error`, comparación de timestamps con `getTime()`
+- **Decisiones**: Se implementó la validación en el frontend (AppointmentForm) para dar feedback inmediato al usuario, sin necesidad de hacer una query extra a la base de datos. La lista de turnos ya está cargada en memoria.
+
 ---
 
 ## 🤔 Decisiones Técnicas

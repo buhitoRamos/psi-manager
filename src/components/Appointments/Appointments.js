@@ -658,6 +658,7 @@ function Appointments() {
 
   // Filtrar turnos por nombre de paciente y estado (ignorando acentos)
   const filteredAppointments = appointments.filter(appointment => {
+    const matchesPatient = !selectedPatient || appointment.patient_id === selectedPatient.id;
     const matchesSearch = !searchTerm || (() => {
       const searchNormalized = normalizeText(searchTerm);
       const patientName = normalizeText(appointment.patient_name || '');
@@ -673,7 +674,7 @@ function Appointments() {
     
     const matchesStatus = filterStatus === 'all' || appointment.status === filterStatus;
     
-    return matchesSearch && matchesStatus;
+    return matchesPatient && matchesSearch && matchesStatus;
   }).sort((a, b) => {
     // Ordenar por fecha: los próximos turnos primero
     const dateA = new Date(a.date);
@@ -830,6 +831,15 @@ function Appointments() {
             </select>
             <span className="select-arrow">▼</span>
           </div>
+          {selectedPatient && (
+            <button
+              className="appointments-clear-patient-btn"
+              onClick={() => setSelectedPatient(null)}
+              title="Ver todos los turnos"
+            >
+              🔄 Ver todos
+            </button>
+          )}
           <button
             className="appointments-add-btn-modern"
             onClick={() => {
@@ -1006,9 +1016,11 @@ function Appointments() {
         <p className="appointments-count">
           {appointments.length === 0 
             ? 'No hay turnos registrados' 
-            : searchTerm || filterStatus !== 'all'
-              ? `${filteredAppointments.length} de ${appointments.length} turno${appointments.length !== 1 ? 's' : ''}`
-              : `${appointments.length} turno${appointments.length !== 1 ? 's' : ''} encontrado${appointments.length !== 1 ? 's' : ''}`
+            : selectedPatient
+              ? `${filteredAppointments.length} turno${filteredAppointments.length !== 1 ? 's' : ''} de ${selectedPatient.name} ${selectedPatient.last_name || ''}`
+              : searchTerm || filterStatus !== 'all'
+                ? `${filteredAppointments.length} de ${appointments.length} turno${appointments.length !== 1 ? 's' : ''}`
+                : `${appointments.length} turno${appointments.length !== 1 ? 's' : ''} encontrado${appointments.length !== 1 ? 's' : ''}`
           }
         </p>
       </div>
@@ -1197,6 +1209,7 @@ Esta acción no se puede deshacer.`}
         onSave={handleSaveEdit}
         patient={editingAppointment.patient}
         existingAppointment={editingAppointment.appointment}
+        existingAppointments={appointments}
         isPaid={editingAppointment.isPaid}
         onPaymentChange={editingAppointment.onPaymentChange}
         addToCalendar={isAuthorized() ? editingAppointment.addToCalendar : undefined}

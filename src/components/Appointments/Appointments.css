@@ -365,6 +365,28 @@
   align-items: center;
 }
 
+/* Botón para limpiar filtro de paciente */
+.appointments-clear-patient-btn {
+  padding: 0.6rem 1.1rem;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+.appointments-clear-patient-btn:hover {
+  background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 100%);
+  border-color: #94a3b8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 
 .appointments-search {
   position: relative;
