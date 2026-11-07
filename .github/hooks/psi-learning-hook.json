@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "node -e \"console.log('[PSI Expert] Tool ejecutado. Revisando si se debe actualizar knowledge base...')\""
+      }
+    ]
+  }
+}
