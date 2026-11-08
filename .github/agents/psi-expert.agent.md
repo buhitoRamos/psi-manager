@@ -38,6 +38,7 @@ src/
 │   ├── ChangePassword/       # Cambio de contraseña
 │   ├── ConfirmModal/         # Modal de confirmación genérico
 │   ├── CustomConfirmModal/   # Modal de confirmación personalizado
+│   ├── SupportChat/          # Chatbot de soporte Buhobot
 │   └── Loading/              # Componente de carga
 ├── pages/
 │   ├── login-page/login.js   # Página de login
@@ -53,7 +54,9 @@ src/
 │   └── googleCalendarReconnect.js  # Reconexión de Google Calendar
 ├── config/
 │   └── appConfig.js          # Configuración centralizada (env vars con defaults)
-└── sql/                      # Scripts SQL para Supabase RPC
+├── sql/                      # Scripts SQL para Supabase RPC
+└── supabase/functions/
+    └── support-chat/         # Edge Function del chatbot de soporte
 ```
 
 ### Patrones de Código Establecidos
@@ -92,7 +95,15 @@ src/
 - Diseño responsive y mobile-friendly
 - Toasts configurados con gradientes y estilos personalizados
 
-#### 7. Estilos Visuales (CRÍTICO)
+#### 7. Chatbot de soporte Buhobot
+- El widget global está implementado en `src/components/SupportChat/SupportChat.jsx` y se monta desde `src/App.js`; está disponible también en la pantalla de login.
+- El frontend envía mensajes a la Supabase Edge Function `support-chat`; la URL puede configurarse con `REACT_APP_SUPPORT_CHAT_URL`.
+- La conversación del usuario se conserva en `localStorage` con la clave `support-chat-{appId}` (hasta 60 mensajes).
+- El botón de soporte del login abre la instancia global mediante el evento `psi-support-chat:open`; conservar este contrato al modificar el acceso desde login.
+- La Edge Function actual usa una API compatible con OpenAI para Ollama Cloud (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_API_KEY`) y puede notificar por Telegram. **No asumir que está conectada a OpenClaw** sin verificar cambios en su implementación y configuración.
+- No exponer claves privadas, service-role keys o tokens de proveedor en el frontend; mantenerlos como secretos del backend.
+
+#### 8. Estilos Visuales (CRÍTICO)
 - **SIEMPRE mantener la coherencia visual** con el diseño existente de la app
 - Antes de crear un componente nuevo, revisar los estilos de componentes similares (ej: copiar patrones de `patients.css`, `Appointments.css`)
 - Usar la misma paleta de colores: azules (`#3498db`, `#2980b9`), grises (`#2c3e50`, `#34495e`), fondos claros (`#f8fafc`, `#fafdff`)
