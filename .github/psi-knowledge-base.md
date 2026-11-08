@@ -187,6 +187,15 @@ const { data, error } = await supabase
 - **Patrones usados**: Early return con `toast.error`, verificación de estado con `isAuthorized()`
 - **Decisiones**: Se prefirió mostrar un mensaje claro al usuario en lugar de intentar reconectar automáticamente, para que el usuario sea consciente de que debe reactivar la conexión.
 
+### 2026-11-08 - Acceso al chatbot desde el login
+- **Descripción**: El enlace de soporte por WhatsApp del login se reemplazó por un botón que abre el chatbot Buhobot ya montado globalmente en la aplicación.
+- **Archivos**:
+  - `src/components/login/Login.js` — botón “Hablar con Buhobot” que emite el evento `psi-support-chat:open`
+  - `src/components/login/Login.css` — conserva el estilo existente del botón de soporte y lo adapta al elemento `button`
+  - `src/components/SupportChat/SupportChat.jsx` — escucha el evento y abre el panel del chatbot
+- **Patrones usados**: Comunicación desacoplada entre el login y el widget global mediante un evento de ventana; limpieza del listener al desmontar.
+- **Decisiones**: Se reutiliza el chatbot global para mantener una única conversación y no duplicar el widget dentro del login.
+
 ---
 
 ## 🤔 Decisiones Técnicas

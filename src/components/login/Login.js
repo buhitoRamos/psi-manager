@@ -292,14 +292,13 @@ function Login() {
                 ¿No tenés cuenta? <strong>Crear cuenta gratis</strong>
               </button>
             )}
-            <a
+            <button
+              type="button"
               className="login-support-link"
-              href="https://wa.me/5491139050391?text=Hola%2C%20quiero%20soporte%20de%20Psi%20Manager"
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => window.dispatchEvent(new Event('psi-support-chat:open'))}
             >
-              📱 Soporte Técnico
-            </a>
+              🤖 Hablar con Buhobot
+            </button>
           </div>
         </div>
       </form>

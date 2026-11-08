@@ -32,6 +32,12 @@ function SupportChat({ appId, userEmail }) {
   }, [messages, open]);
 
   useEffect(() => {
+    const openSupportChat = () => setOpen(true);
+    window.addEventListener('psi-support-chat:open', openSupportChat);
+    return () => window.removeEventListener('psi-support-chat:open', openSupportChat);
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(`support-chat-${appId}`, JSON.stringify(messages.slice(-60)));
     } catch {
