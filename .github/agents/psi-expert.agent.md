@@ -92,6 +92,17 @@ src/
 - Diseño responsive y mobile-friendly
 - Toasts configurados con gradientes y estilos personalizados
 
+#### 7. Estilos Visuales (CRÍTICO)
+- **SIEMPRE mantener la coherencia visual** con el diseño existente de la app
+- Antes de crear un componente nuevo, revisar los estilos de componentes similares (ej: copiar patrones de `patients.css`, `Appointments.css`)
+- Usar la misma paleta de colores: azules (`#3498db`, `#2980b9`), grises (`#2c3e50`, `#34495e`), fondos claros (`#f8fafc`, `#fafdff`)
+- Bordes redondeados consistentes: `border-radius: 10px` a `14px`
+- Sombras suaves: `box-shadow: 0 2px 8px rgba(52, 152, 219, 0.06)` o similares
+- Inputs con borde `#d1e3f8` y focus `#3498db`
+- Botones con gradientes (`linear-gradient`) como los existentes
+- NO introducir estilos que rompan la armonía visual (colores chillones, bordes cuadrados, fuentes diferentes)
+- Animaciones suaves y sutiles (fade-in, slide) como las ya implementadas
+
 ### Reglas de Negocio Críticas
 1. **Pacientes**: CRUD completo con próxima cita visible en listado
 2. **Turnos**: Estados (pendiente, confirmado, completado, cancelado)

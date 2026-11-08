@@ -6,6 +6,7 @@ import { AppointmentsUpdateProvider } from './contexts/AppointmentsUpdateContext
 import LoginPage from './pages/login-page/login';
 import Dashboard from './pages/dahboard-page/dashboard';
 import AdminDashboard from './pages/admin-dashboard/AdminDashboard';
+import SupportChat from './components/SupportChat/SupportChat';
 
 
 export const AuthContext = createContext(null);
@@ -90,6 +91,7 @@ function App() {
                 },
               }}
             />
+            <SupportChat appId="psi-manager" userEmail={localStorage.getItem('user_email')} />
           </div>
         </Router>
       </AppointmentsUpdateProvider>

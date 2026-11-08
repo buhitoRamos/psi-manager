@@ -197,6 +197,7 @@ const { data, error } = await supabase
 | RPC en lugar de REST directo | Optimización de queries complejas | Inicio |
 | Google Calendar API v3 | Integración nativa sin librerías externas | Inicio |
 | `dahboard-page` (typo) | Error inicial que se mantuvo para no romper imports | Inicio |
+| Consistencia visual obligatoria | Todo componente nuevo debe seguir la paleta y estilos existentes | 2026-11-07 |
 
 ---
 

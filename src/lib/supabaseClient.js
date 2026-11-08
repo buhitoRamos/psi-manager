@@ -8,6 +8,8 @@ const DEFAULT_SUPABASE_ANON_KEY =
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
+export const SUPABASE_ANON_KEY = supabaseAnonKey;
+
 if (!supabaseUrl || !supabaseAnonKey) {
   // eslint-disable-next-line no-console
   console.warn('Supabase URL or ANON key not found in environment variables and no default provided.');
