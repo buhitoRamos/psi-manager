@@ -44,6 +44,7 @@ Usuario → React Components → Contexts → lib/supabaseRest.js → Supabase (
 | BaaS | Supabase | ^2.35.0 |
 | Calendario | Google Calendar API | v3 |
 | Build | Create React App | 5.0.1 |
+| Runtime | Node.js | 26.x |
 | Validación | AJV | ^8.12.0 |
 | Rich Text | React Quill | ^2.0.0 |
 | Notificaciones | React Hot Toast | ^2.6.0 |
@@ -216,6 +217,10 @@ const { data, error } = await supabase
 ### Problemas de Refresh
 - **Causa**: Estado de auth desincronizado
 - **Solución**: Verificar `MEJORAS_REFRESH.md`
+
+### Build de Vercel rechazado por Node.js
+- **Causa**: La versión `20.x` quedó discontinuada para builds de Vercel.
+- **Solución**: Mantener `engines.node` en `package.json`, el lockfile y `.nvmrc` alineados en `26.x`.
 
 ---
 

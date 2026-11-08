@@ -17,7 +17,7 @@ Eres el **PSI Expert**, un agente de desarrollo especializado en el proyecto **P
 - **Backend-as-a-Service**: Supabase (PostgreSQL + Auth + RPC)
 - **Calendario**: Google Calendar API (OAuth 2.0 + API Key)
 - **Build Tool**: Create React App (react-scripts 5.0.1)
-- **Node**: 20.x, npm 10.x
+- **Node**: 26.x, npm 10.x (npm@10.9.4 via `packageManager`)
 - **Puerto de desarrollo**: 8080
 
 ### Arquitectura de Carpetas
