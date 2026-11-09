@@ -5,6 +5,7 @@
 // verificación de email antes de crear, notificación al admin por Telegram, clave 1810.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type BillingPeriod, calculateBillingPeriod } from "./billing.ts";
 
 const MODEL = Deno.env.get("OLLAMA_MODEL") ?? "gemma4:31b-cloud";
 const OLLAMA_API_KEY = Deno.env.get("OLLAMA_API_KEY") ?? "";
@@ -22,6 +23,9 @@ const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
 const MAX_HISTORY = 60;
 const MAX_MSG_CHARS = 8000;
 const MAX_TOOL_ROUNDS = 6;
+const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+const PAYMENT_ALIAS = "martin.g.lopez";
+const PAYMENT_REMINDER_DAYS = 3;
 
 // ---------- Registro de apps ----------
 
@@ -33,6 +37,7 @@ type AppDef = {
   terms: string; // con placeholders {fecha_actual} {fecha_vencimiento} {fecha_limite_pago}
   supabaseUrl: string;
   serviceRoleKey: string;
+  freeUsersEnv: string;
   incrementSessionVersion?: boolean; // Sound-Book: invalida sesiones al resetear
 };
 
@@ -63,6 +68,7 @@ function appRegistry(): Record<string, AppDef> {
 ¿Aceptás los Términos y Condiciones? (Sí/No)`,
       supabaseUrl: "https://ljynujodigqqujjvyoud.supabase.co",
       serviceRoleKey: Deno.env.get("PSI_SERVICE_ROLE_KEY") ?? "",
+      freeUsersEnv: "PSI_FREE_USERS_EMAILS",
     },
     "sound-book": {
       id: "sound-book",
@@ -89,6 +95,7 @@ function appRegistry(): Record<string, AppDef> {
 ¿Aceptás los Términos y Condiciones? (Sí/No)`,
       supabaseUrl: "https://owzpmzoqvmikdmebnxww.supabase.co",
       serviceRoleKey: Deno.env.get("SOUND_SERVICE_ROLE_KEY") ?? "",
+      freeUsersEnv: "SOUND_FREE_USERS_EMAILS",
       incrementSessionVersion: true,
     },
   };
@@ -101,10 +108,15 @@ function fmt(d: Date): string {
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function firstFreeMonthExpiry(reference = new Date()): Date {
+  const signupDate = reference.toISOString().slice(0, 10);
+  const expiryDate = calculateBillingPeriod(`${signupDate}T00:00:00Z`, signupDate).firstDueDate;
+  return new Date(`${expiryDate}T12:00:00Z`);
+}
+
 function buildTerms(app: AppDef): string {
   const hoy = new Date();
-  const venc = new Date(hoy);
-  venc.setMonth(venc.getMonth() + 1);
+  const venc = firstFreeMonthExpiry(hoy);
   return app.terms
     .replaceAll("{fecha_actual}", fmt(hoy))
     .replaceAll("{fecha_vencimiento}", fmt(venc))
@@ -123,6 +135,265 @@ async function telegram(text: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function argentinaDateParts(
+  date: Date,
+): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type: string) => Number(parts.find((item) => item.type === type)?.value);
+  return { year: part("year"), month: part("month"), day: part("day") };
+}
+
+async function getMembershipStatus(
+  app: AppDef,
+  email: string,
+): Promise<Response> {
+  const freeUsers = Deno.env.get(app.freeUsersEnv);
+  if (freeUsers === undefined) {
+    console.error(`[membership-status] ${app.freeUsersEnv} is not configured`);
+    return new Response(
+      JSON.stringify({
+        error: "No se pudo verificar la elegibilidad de la membresía.",
+      }),
+      {
+        status: 503,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  if (
+    freeUsers.split(",").map((value) => value.trim().toLowerCase()).includes(
+      email,
+    )
+  ) {
+    return new Response(JSON.stringify({ show: false }), {
+      status: 200,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  const db = createClient(app.supabaseUrl, app.serviceRoleKey);
+  const { data: users, error: userError } = await db
+    .from("users")
+    .select("id, created_at, role")
+    .eq("user", email)
+    .limit(1);
+  if (userError) {
+    console.error("[membership-status] user lookup failed:", userError.message);
+    return new Response(
+      JSON.stringify({ error: "No se pudo consultar la membresía." }),
+      {
+        status: 502,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  const user = users?.[0];
+  if (!user || typeof user.created_at !== "string") {
+    return new Response(
+      JSON.stringify({ error: "No se encontró la cuenta." }),
+      {
+        status: 404,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+
+  let period: BillingPeriod;
+  try {
+    const today = argentinaDateParts(new Date());
+    const todayString = `${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`;
+    period = calculateBillingPeriod(user.created_at, todayString);
+  } catch (error) {
+    console.error("[membership-status] invalid billing dates:", error);
+    return new Response(
+      JSON.stringify({ error: "La fecha de alta de la cuenta no es válida." }),
+      {
+        status: 500,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+
+  if (period.daysUntilDue < 0 || period.daysUntilDue > PAYMENT_REMINDER_DAYS) {
+    return new Response(JSON.stringify({ show: false }), {
+      status: 200,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  const due = new Date(`${period.dueDate}T00:00:00Z`);
+  const paymentWindowStart = new Date(due.getTime() - 5 * 86_400_000)
+    .toISOString();
+  const paymentWindowEnd = new Date(due.getTime() + 86_400_000).toISOString();
+  const { data: payments, error: paymentError } = await db
+    .from("admin_payments")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "completed")
+    .gte("created_at", paymentWindowStart)
+    .lt("created_at", paymentWindowEnd)
+    .limit(1);
+  if (paymentError) {
+    console.error(
+      "[membership-status] payment lookup failed:",
+      paymentError.message,
+    );
+    return new Response(
+      JSON.stringify({ error: "No se pudo verificar el estado del pago." }),
+      {
+        status: 502,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  if (payments?.length) {
+    return new Response(JSON.stringify({ show: false }), {
+      status: 200,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  return new Response(
+    JSON.stringify({
+      show: true,
+      due_date: period.dueDate,
+      days_until_due: period.daysUntilDue,
+      is_first_month: period.dueDate === period.firstDueDate,
+      plan: user.role === "google" ? "Pro" : "Básico",
+      amount: user.role === "google" ? 15000 : 10000,
+      alias: PAYMENT_ALIAS,
+    }),
+    { status: 200, headers: JSON_HEADERS },
+  );
+}
+
+async function forwardPaymentReceipt(
+  app: AppDef,
+  email: string,
+  file: File,
+): Promise<Response> {
+  if (!TG_TOKEN || !TG_CHAT_ID) {
+    return new Response(
+      JSON.stringify({
+        error: "El envío de comprobantes no está configurado.",
+      }),
+      {
+        status: 503,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  if (!file.size || file.size > MAX_RECEIPT_BYTES) {
+    return new Response(
+      JSON.stringify({ error: "El archivo debe pesar menos de 10 MB." }),
+      {
+        status: 413,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
+  if (!allowedTypes.has(file.type)) {
+    return new Response(
+      JSON.stringify({ error: "Adjuntá un comprobante en PDF, JPG o PNG." }),
+      {
+        status: 415,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+
+  const db = createClient(app.supabaseUrl, app.serviceRoleKey);
+  const { data: users, error: userError } = await db
+    .from("users")
+    .select("first_name, last_name, phone")
+    .eq("user", email)
+    .limit(1);
+  if (userError) {
+    console.error("[payment-receipt] user lookup failed:", userError.message);
+    return new Response(
+      JSON.stringify({ error: "No se pudo validar la cuenta." }),
+      {
+        status: 502,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+  const user = users?.[0];
+  if (!user) {
+    return new Response(
+      JSON.stringify({
+        error: "No se encontró la cuenta para asociar el comprobante.",
+      }),
+      {
+        status: 404,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) ||
+    "comprobante";
+  const form = new FormData();
+  form.set("chat_id", TG_CHAT_ID);
+  form.set("document", file, safeName);
+  form.set(
+    "caption",
+    `💳 COMPROBANTE DE PAGO\nApp: ${app.name}\nCliente: ${user.first_name ?? ""} ${
+      user.last_name ?? ""
+    }\nEmail: ${email}\nTeléfono: ${
+      user.phone ?? "No registrado"
+    }\n\nPendiente de revisión; no confirmar automáticamente.`,
+  );
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${TG_TOKEN}/sendDocument`,
+      {
+        method: "POST",
+        body: form,
+      },
+    );
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      console.error(
+        "[payment-receipt] Telegram rejected document:",
+        result.description ?? response.status,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "No se pudo enviar el comprobante. Probá de nuevo más tarde.",
+        }),
+        {
+          status: 502,
+          headers: JSON_HEADERS,
+        },
+      );
+    }
+  } catch (error) {
+    console.error("[payment-receipt] Telegram request failed:", error);
+    return new Response(
+      JSON.stringify({
+        error: "No se pudo enviar el comprobante. Probá de nuevo más tarde.",
+      }),
+      {
+        status: 502,
+        headers: JSON_HEADERS,
+      },
+    );
+  }
+
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: JSON_HEADERS,
+  });
 }
 
 // Verifica que los T&C fueron enviados y aceptados explícitamente después.
@@ -178,6 +449,8 @@ PROHIBIDO responder sobre otros temas, otras apps o conocimiento general.
 - No repetir datos que ya tengas del contexto del usuario logueado.
 - Reset de clave: SOLO para el email del usuario logueado. Para cualquier otro email → notify_admin y decile que el administrador lo va a contactar.
 - NUNCA confirmar pagos ni registrar comprobantes: eso lo verifica el administrador. Si el cliente menciona un pago, avisale que el administrador lo confirma.
+- Para transferencias, indicá el alias martin.g.lopez y pedí que adjunten el comprobante con el botón 📎 del chat. El primer mes es gratis.
+- Si adjuntan un comprobante desde el chat, confirmá solo la recepción y aclarales que el administrador debe revisarlo; no confirmes el pago.
 - No prometer fechas de fix para bugs. Reportarlos con notify_admin (subject "🐛 BUG") con el máximo detalle.
 - No dar información de otros usuarios.
 - Nunca mencionar el nombre del administrador: decís "el administrador".
@@ -331,8 +604,7 @@ async function createAccount(
   const { data: inserted, error } = await db.from("users").insert(row).select().single();
   if (error) return { error: "Error al crear la cuenta: " + error.message };
 
-  const venc = new Date();
-  venc.setMonth(venc.getMonth() + 1);
+  const venc = firstFreeMonthExpiry();
   await telegram(
     `🆕 NUEVO USUARIO CREADO\nApp: ${app.name}\nCliente: ${firstName} ${lastName}\nPlan: ${
       plan === "pro" ? "Pro" : "Básica"
@@ -468,14 +740,57 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!OLLAMA_API_KEY) {
-    return new Response(JSON.stringify({ error: "OLLAMA_API_KEY no configurada" }), {
-      status: 500,
-      headers: JSON_HEADERS,
-    });
+  const contentType = req.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      return new Response(JSON.stringify({ error: "Formulario inválido." }), {
+        status: 400,
+        headers: JSON_HEADERS,
+      });
+    }
+    const appId = String(form.get("app") ?? "");
+    const app = appRegistry()[appId];
+    const email = String(form.get("user_email") ?? "").trim().toLowerCase();
+    const file = form.get("file");
+    if (form.get("action") !== "payment_receipt") {
+      return new Response(
+        JSON.stringify({ error: "Acción de formulario no válida." }),
+        {
+          status: 400,
+          headers: JSON_HEADERS,
+        },
+      );
+    }
+    if (!app || !app.serviceRoleKey) {
+      return new Response(
+        JSON.stringify({ error: "App desconocida o no configurada." }),
+        {
+          status: 404,
+          headers: JSON_HEADERS,
+        },
+      );
+    }
+    if (
+      !email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ||
+      !(file instanceof File)
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "Faltan datos válidos para enviar el comprobante.",
+        }),
+        {
+          status: 400,
+          headers: JSON_HEADERS,
+        },
+      );
+    }
+    return await forwardPaymentReceipt(app, email, file);
   }
 
-  let body: { app?: unknown; messages?: unknown; user_email?: unknown };
+  let body: { app?: unknown; action?: unknown; messages?: unknown; user_email?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -492,6 +807,33 @@ Deno.serve(async (req) => {
       status: 404,
       headers: JSON_HEADERS,
     });
+  }
+
+  const sessionEmail =
+    typeof body.user_email === "string" && body.user_email.includes("@")
+      ? body.user_email.trim().toLowerCase()
+      : null;
+  if (body.action === "membership_status") {
+    if (!sessionEmail) {
+      return new Response(
+        JSON.stringify({ error: "Iniciá sesión para consultar tu membresía." }),
+        {
+          status: 400,
+          headers: JSON_HEADERS,
+        },
+      );
+    }
+    return await getMembershipStatus(app, sessionEmail);
+  }
+
+  if (!OLLAMA_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "OLLAMA_API_KEY no configurada" }),
+      {
+        status: 500,
+        headers: JSON_HEADERS,
+      },
+    );
   }
 
   const rawHistory = Array.isArray(body.messages) ? (body.messages as ChatMessage[]) : [];
@@ -513,11 +855,6 @@ Deno.serve(async (req) => {
       headers: JSON_HEADERS,
     });
   }
-
-  const sessionEmail =
-    typeof body.user_email === "string" && body.user_email.includes("@")
-      ? body.user_email.trim().toLowerCase()
-      : null;
 
   // Contexto del usuario logueado
   let userCtx = "El cliente NO está logueado (posible nuevo cliente).";

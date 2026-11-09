@@ -7,6 +7,7 @@ import LoginPage from './pages/login-page/login';
 import Dashboard from './pages/dahboard-page/dashboard';
 import AdminDashboard from './pages/admin-dashboard/AdminDashboard';
 import SupportChat from './components/SupportChat/SupportChat';
+import MembershipReminder from './components/MembershipReminder/MembershipReminder';
 
 
 export const AuthContext = createContext(null);
@@ -46,6 +47,12 @@ function App() {
       <AppointmentsUpdateProvider>
         <Router>
           <div className="App">
+            {isAuthenticated && localStorage.getItem('user_role') !== 'admin' && (
+              <MembershipReminder
+                userEmail={localStorage.getItem('user_email')}
+                onOpenChat={() => window.dispatchEvent(new Event('psi-support-chat:open'))}
+              />
+            )}
             <Routes>
               <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={localStorage.getItem('user_role') === 'admin' ? "/admin" : "/dashboard"} />} />
               <Route path="/admin" element={isAuthenticated && localStorage.getItem('user_role') === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />

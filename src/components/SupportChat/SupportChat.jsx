@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './SupportChat.css';
+import { uploadPaymentReceipt } from '../../lib/membershipPayments';
 
 const EDGE_FUNCTION_URL =
   process.env.REACT_APP_SUPPORT_CHAT_URL ||
@@ -26,6 +27,7 @@ function SupportChat({ appId, userEmail }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,6 +91,38 @@ function SupportChat({ appId, userEmail }) {
     setError(null);
   };
 
+  const sendReceipt = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || loading) return;
+
+    const email = userEmail || localStorage.getItem('user_email');
+    if (!email) {
+      setError('Iniciá sesión para enviar un comprobante de pago.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await uploadPaymentReceipt(email, file);
+      setMessages((current) => [
+        ...current,
+        { role: 'user', content: `📎 Comprobante adjunto: ${file.name}` },
+        {
+          role: 'assistant',
+          content:
+            'Recibí el comprobante y se lo envié al administrador para que lo revise. El pago todavía no está confirmado.',
+        },
+      ]);
+    } catch (err) {
+      setError(err.message || 'No se pudo enviar el comprobante. Probá de nuevo.');
+      console.error('[SupportChat receipt]', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="support-chat-widget">
       {open && (
@@ -129,6 +163,24 @@ function SupportChat({ appId, userEmail }) {
           </div>
           {error && <div className="support-chat-error">{error}</div>}
           <form className="support-chat-input-row" onSubmit={send}>
+            <input
+              ref={fileInputRef}
+              className="support-chat-file-input"
+              type="file"
+              accept="application/pdf,image/jpeg,image/png"
+              onChange={sendReceipt}
+              aria-label="Adjuntar comprobante"
+            />
+            <button
+              className="support-chat-attach"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || !(userEmail || localStorage.getItem('user_email'))}
+              title="Adjuntar comprobante PDF, JPG o PNG"
+              aria-label="Adjuntar comprobante"
+            >
+              📎
+            </button>
             <input
               className="support-chat-input"
               value={input}
