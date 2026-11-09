@@ -1,15 +1,15 @@
 // Edge Function central: chatbot de soporte multi-app (Buho Systems).
 // Cada app registra su identidad, planes, T&C y su propio Supabase.
-// El modelo es configurable: OLLAMA_MODEL (default gemma4:31b-cloud) vía ollama cloud.
+// El modelo de soporte usa únicamente Gemma 4 vía Ollama Cloud.
 // Políticas del support bot forzadas en código: T&C completos, "SÍ" explícito,
 // verificación de email antes de crear, notificación al admin por Telegram, clave 1810.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { type BillingPeriod, calculateBillingPeriod } from "./billing.ts";
 
-const MODEL = Deno.env.get("OLLAMA_MODEL") ?? "gemma4:31b-cloud";
+const MODEL = "gemma4:31b-cloud";
 const OLLAMA_API_KEY = Deno.env.get("OLLAMA_API_KEY") ?? "";
-const OLLAMA_URL = Deno.env.get("OLLAMA_BASE_URL") ?? "https://ollama.com/v1/chat/completions";
+const OLLAMA_URL = "https://ollama.com/v1/chat/completions";
 const TG_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const TG_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
 
@@ -704,12 +704,13 @@ async function executeTool(
 
 type ChatMessage = {
   role: string;
-  content?: string;
+  content?: string | null;
   tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
 };
 
 async function callOllama(messages: ChatMessage[], withTools: boolean): Promise<ChatMessage> {
-  const r = await fetch(OLLAMA_URL, {
+  const response = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -721,11 +722,12 @@ async function callOllama(messages: ChatMessage[], withTools: boolean): Promise<
       ...(withTools ? { tools: TOOLS } : {}),
       stream: false,
     }),
+    signal: AbortSignal.timeout(30_000),
   });
-  if (!r.ok) {
-    throw new Error(`Ollama ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (!response.ok) {
+    throw new Error(`Ollama ${response.status}: ${(await response.text()).slice(0, 300)}`);
   }
-  const data = await r.json();
+  const data = await response.json();
   return data.choices?.[0]?.message ?? { role: "assistant", content: "" };
 }
 
@@ -901,7 +903,7 @@ Deno.serve(async (req) => {
           role: "tool",
           tool_call_id: tc.id,
           content: JSON.stringify(result),
-        } as unknown as ChatMessage);
+        });
       }
     }
 
@@ -910,7 +912,10 @@ Deno.serve(async (req) => {
       final = await callOllama(messages, false);
     }
 
-    return new Response(JSON.stringify({ reply: final.content ?? "", model: MODEL }), {
+    return new Response(JSON.stringify({
+      reply: final.content ?? "",
+      model: MODEL,
+    }), {
       status: 200,
       headers: JSON_HEADERS,
     });

@@ -100,7 +100,7 @@ src/
 - El frontend envía mensajes a la Supabase Edge Function `support-chat`; la URL puede configurarse con `REACT_APP_SUPPORT_CHAT_URL`.
 - La conversación del usuario se conserva en `localStorage` con la clave `support-chat-{appId}` (hasta 60 mensajes).
 - El botón de soporte del login abre la instancia global mediante el evento `psi-support-chat:open`; conservar este contrato al modificar el acceso desde login.
-- La Edge Function actual usa una API compatible con OpenAI para Ollama Cloud (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_API_KEY`) y puede notificar por Telegram. **No asumir que está conectada a OpenClaw** sin verificar cambios en su implementación y configuración.
+- La Edge Function usa solo `gemma4:31b-cloud` en Ollama Cloud y requiere `OLLAMA_API_KEY`. El endpoint es fijo en `https://ollama.com/v1/chat/completions`; no configurar un fallback Copilot ni variables `OLLAMA_MODEL`/`OLLAMA_BASE_URL`. Puede notificar por Telegram. **No asumir que está conectada a OpenClaw** sin verificar cambios en su implementación y configuración.
 - No exponer claves privadas, service-role keys o tokens de proveedor en el frontend; mantenerlos como secretos del backend.
 
 #### 8. Estilos Visuales (CRÍTICO)
